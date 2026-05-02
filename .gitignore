@@ -1,7 +1,7 @@
 # Environment Variables
 .env
 .env.*
-!.env.example
+
 
 # Virtual Environments
 backend/venv/*
