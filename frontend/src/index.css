@@ -1,0 +1,325 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+@theme {
+  /* ── Zukuri Earthy Pastel Palette ──────────────────────────── */
+  --color-muse-bg: #F1EFE9;
+  /* Off-white */
+  --color-muse-surface: #ffffff;
+  --color-muse-surface-light: #Fcfdfc;
+  --color-muse-border: #97B1A6;
+  /* Sage green */
+  --color-muse-text: #2e3a35;
+  /* Very dark sage for high contrast */
+  --color-muse-text-dim: #6c8077;
+  /* Mid sage */
+  --color-muse-accent: #F5BEB0;
+  /* Soft coral */
+  --color-muse-accent-glow: #F5BEB040;
+  --color-muse-warm: #D0C5B9;
+  /* Warm sand/taupe */
+
+  /* Zukuri pixel accent colors */
+  --color-pixel-pink: #F4DBD6;
+  /* Pale peach */
+  --color-pixel-lavender: #D4E4D4;
+  /* Mint green */
+  --color-pixel-blue: #97B1A6;
+  /* Sage green */
+  --color-pixel-gold: #F5BEB0;
+  /* Soft coral */
+  --color-pixel-mint: #D4E4D4;
+  /* Mint green */
+  --color-pixel-orange: #D0C5B9;
+  /* Warm sand/taupe */
+
+  /* Legacy CRT aliases */
+  --color-crt-amber: #4a5c54;
+  /* Darker sage for better button contrast */
+  --color-crt-glow: #97B1A628;
+  --color-crt-green: #97B1A6;
+
+  /* Mono palette for Mono the companion */
+  --color-mono-fur: #D0C5B9;
+  --color-mono-fur-light: #F4DBD6;
+  --color-mono-fur-dark: #A59B90;
+  --color-mono-face: #F1EFE9;
+
+  /* Typography */
+  --font-pixel: "Press Start 2P", monospace;
+  --font-display: "JetBrains Mono", "IBM Plex Mono", monospace;
+  --font-body: "JetBrains Mono", "Courier New", monospace;
+  --font-mono: "JetBrains Mono", "IBM Plex Mono", "Courier New", monospace;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-body);
+    background-color: var(--color-muse-bg);
+    color: var(--color-muse-text);
+    -webkit-font-smoothing: antialiased;
+    image-rendering: pixelated;
+  }
+
+  ::selection {
+    background-color: #ff6b9d35;
+    color: #ff6b9d;
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-muse-border);
+    border-radius: 0px;
+    /* crisp pixel look */
+  }
+}
+
+/* ── Pixel Art Utilities ──────────────────────────────── */
+@layer utilities {
+  .pixel-border {
+    border: 2px solid var(--color-muse-border);
+    box-shadow:
+      inset 1px 1px 0 rgba(255, 255, 255, 0.06),
+      inset -1px -1px 0 rgba(0, 0, 0, 0.3);
+  }
+
+  .pixel-border-accent {
+    border: 2px solid var(--color-pixel-pink);
+    box-shadow:
+      0 0 8px var(--color-muse-accent-glow),
+      inset 1px 1px 0 rgba(255, 107, 157, 0.1);
+  }
+
+  .pixel-panel {
+    background: var(--color-muse-surface);
+    border: 2px solid var(--color-muse-border);
+    box-shadow:
+      4px 4px 0 rgba(0, 0, 0, 0.4),
+      inset 1px 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  .pixel-panel-raised {
+    background: var(--color-muse-surface-light);
+    border: 2px solid var(--color-muse-border);
+    box-shadow:
+      3px 3px 0 rgba(0, 0, 0, 0.5),
+      inset 1px 1px 0 rgba(255, 255, 255, 0.06),
+      inset -1px -1px 0 rgba(0, 0, 0, 0.2);
+  }
+
+  .pixel-btn {
+    font-family: var(--font-pixel);
+    font-size: 8px;
+    padding: 6px 10px;
+    background: var(--color-muse-surface-light);
+    color: var(--color-pixel-pink);
+    border: 2px solid var(--color-pixel-pink);
+    box-shadow: 3px 3px 0 rgba(255, 107, 157, 0.3);
+    cursor: pointer;
+    transition: all 0.1s steps(1);
+    image-rendering: pixelated;
+  }
+
+  .pixel-btn:hover {
+    background: #ff6b9d18;
+    box-shadow: 2px 2px 0 rgba(255, 107, 157, 0.3);
+    transform: translate(1px, 1px);
+  }
+
+  .pixel-btn:active {
+    box-shadow: none;
+    transform: translate(3px, 3px);
+  }
+
+  .pixel-btn-ghost {
+    font-family: var(--font-pixel);
+    font-size: 8px;
+    padding: 6px 10px;
+    background: transparent;
+    color: var(--color-muse-text-dim);
+    border: 2px solid var(--color-muse-border);
+    box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    transition: all 0.1s steps(1);
+  }
+
+  .pixel-btn-ghost:hover {
+    color: var(--color-pixel-pink);
+    border-color: var(--color-pixel-pink);
+  }
+
+  .pixel-text {
+    font-family: var(--font-pixel);
+    image-rendering: pixelated;
+  }
+
+  .pixel-glow-pink {
+    text-shadow:
+      0 0 4px var(--color-pixel-pink),
+      0 0 12px rgba(255, 107, 157, 0.4);
+  }
+
+  .pixel-glow-blue {
+    text-shadow:
+      0 0 4px var(--color-pixel-blue),
+      0 0 12px rgba(130, 170, 255, 0.4);
+  }
+
+  .pixel-glow-gold {
+    text-shadow:
+      0 0 4px var(--color-pixel-gold),
+      0 0 12px rgba(247, 220, 111, 0.4);
+  }
+
+  .pixel-dither {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect x='0' y='0' width='2' height='2' fill='rgba(255,107,157,0.03)'/%3E%3Crect x='2' y='2' width='2' height='2' fill='rgba(255,107,157,0.03)'/%3E%3C/svg%3E");
+  }
+
+  .scanlines {
+    background-image: repeating-linear-gradient(0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.08) 2px,
+        rgba(0, 0, 0, 0.08) 4px);
+  }
+
+  /* Pixel progress bar */
+  .pixel-bar-track {
+    height: 8px;
+    background: var(--color-muse-bg);
+    border: 2px solid var(--color-muse-border);
+    box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.4);
+    image-rendering: pixelated;
+  }
+
+  .pixel-bar-fill {
+    height: 100%;
+    image-rendering: pixelated;
+    transition: width 0.3s steps(8);
+  }
+}
+
+/* ── Pixel Art Keyframe Animations ───────────────────── */
+@keyframes pixel-float {
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes pixel-wiggle {
+
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  25% {
+    transform: rotate(-3deg);
+  }
+
+  75% {
+    transform: rotate(3deg);
+  }
+}
+
+@keyframes pixel-pulse-pink {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 107, 157, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 0 6px rgba(255, 107, 157, 0.15);
+  }
+}
+
+@keyframes pixel-blink {
+
+  0%,
+  49% {
+    opacity: 1;
+  }
+
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes pixel-star-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pixel-bounce {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  40% {
+    transform: translateY(-6px);
+  }
+
+  60% {
+    transform: translateY(-3px);
+  }
+}
+
+.animate-pixel-float {
+  animation: pixel-float 3s ease-in-out infinite;
+}
+
+.animate-pixel-wiggle {
+  animation: pixel-wiggle 0.4s steps(4) infinite;
+}
+
+.animate-pixel-pulse {
+  animation: pixel-pulse-pink 2s ease-in-out infinite;
+}
+
+.animate-pixel-blink {
+  animation: pixel-blink 1s steps(1) infinite;
+}
+
+.animate-pixel-bounce {
+  animation: pixel-bounce 0.6s steps(6) infinite;
+}
+
+@keyframes xp-rise {
+  0% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-24px) scale(0.85);
+  }
+}
+
+.animate-xp-rise {
+  animation: xp-rise 1.4s ease-out forwards;
+}

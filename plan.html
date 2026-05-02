@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Muse: Strategic Research & Execution Plan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #fafaf9; color: #1c1917; }
+        h1, h2, h3, h4 { font-family: 'Playfair Display', serif; }
+       .nav-item.active { border-bottom: 2px solid #ea580c; color: #ea580c; font-weight: 600; }
+       .transition-all { transition: all 0.3s ease; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a29e; }
+    </style>
+</head>
+<body class="bg-stone-50 min-h-screen flex flex-col">
+
+    <header class="w-full bg-white border-b border-stone-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <span class="text-2xl font-bold text-stone-800 tracking-tight">Project Muse</span>
+                    <span class="ml-4 px-2 py-0.5 rounded text-xs font-medium bg-stone-100 text-stone-500">V2: Commercial & Technical Revision</span>
+                </div>
+                <div class="hidden md:flex space-x-8">
+                    <button onclick="navigate('vision')" id="nav-vision" class="nav-item active px-1 pt-1 text-sm font-medium text-stone-900">The Niche</button>
+                    <button onclick="navigate('landscape')" id="nav-landscape" class="nav-item px-1 pt-1 text-sm font-medium text-stone-500 hover:text-stone-700">Market Landscape</button>
+                    <button onclick="navigate('critique')" id="nav-critique" class="nav-item px-1 pt-1 text-sm font-medium text-stone-500 hover:text-stone-700">Hard Critique</button>
+                    <button onclick="navigate('roadmap')" id="nav-roadmap" class="nav-item px-1 pt-1 text-sm font-medium text-stone-500 hover:text-stone-700">Python Architecture</button>
+                    <button onclick="navigate('stack')" id="nav-stack" class="nav-item px-1 pt-1 text-sm font-medium text-stone-500 hover:text-stone-700">Tech Stack</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        
+        <div id="section-vision" class="space-y-8 animate-fade-in">
+            <div class="bg-white rounded-xl shadow-sm p-8 border border-stone-100">
+                <h2 class="text-3xl font-bold text-stone-900 mb-4">The Niche: The "Creative Ops" Manager for Hybrid Creators</h2>
+                <p class="text-lg text-stone-600 leading-relaxed mb-6">
+                    <strong>The Pivot:</strong> Targeting "Polymaths" is too broad for a go-to-market strategy. To drive sales, we must target an acute pain point. Our Ideal Customer Profile (ICP) is the <strong>Multidisciplinary Solo-Creator or Art Director</strong>. These users manage video, graphic design, writing, and strategy simultaneously. Their biggest bottleneck is not a lack of ideas, but <em>Context Switching</em> and <em>Asset Fragmentation</em>.
+                </p>
+                <p class="text-lg text-stone-600 leading-relaxed mb-6">
+                    Project Muse is an <strong>Agentic Creative Ops Manager</strong>. It tracks your emotional bandwidth, organizes your disparate multimodal references, and automates the transition between your distinct creative roles.
+                </p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+                    <div class="p-6 bg-stone-50 rounded-lg border border-stone-100">
+                        <div class="text-orange-600 text-2xl mb-3">✦</div>
+                        <h3 class="text-lg font-semibold text-stone-800 mb-2">Emotion-Aware Routing</h3>
+                        <p class="text-sm text-stone-600">Using models evaluated on benchmarks like EQ-Bench [7] or interfaces like Hume AI [8], the app routes you to tasks that match your current cognitive load (e.g., "Low energy? Let's just organize references today").</p>
+                    </div>
+                    <div class="p-6 bg-stone-50 rounded-lg border border-stone-100">
+                        <div class="text-orange-600 text-2xl mb-3">⚓</div>
+                        <h3 class="text-lg font-semibold text-stone-800 mb-2">Anti-Homogenization RAG</h3>
+                        <p class="text-sm text-stone-600">To avoid the severe risk of AI art homogenization [9], the system strictly grounds its ideation in your personal multimodal vector embeddings (your specific sketches, mood boards, and notes), preserving your unique essence.</p>
+                    </div>
+                    <div class="p-6 bg-stone-50 rounded-lg border border-stone-100">
+                        <div class="text-orange-600 text-2xl mb-3">⚡</div>
+                        <h3 class="text-lg font-semibold text-stone-800 mb-2">Agentic RAG Workflows</h3>
+                        <p class="text-sm text-stone-600">Moves beyond simple search. Uses Agentic RAG to perform autonomous planning and multi-hop retrieval [10], synthesizing a project brief from a video snippet and a PDF you saved months ago.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="section-landscape" class="hidden space-y-8">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-stone-900">State of the Art & Competitors</h2>
+                <p class="text-stone-600 mt-2">
+                    The market is saturated with productivity tools and storage apps, but there is a "Blue Ocean" gap for tools that manage <strong>Creative Context</strong> rather than just tasks or files.
+                </p>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-stone-100">
+                <div id="landscapeChart" class="w-full h-[500px]"></div>
+                <div class="mt-4 text-center text-sm text-stone-500">
+                    *Bubble size represents estimated AI Integration Depth. Hover for details.
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-xl border border-stone-100">
+                    <h3 class="font-bold text-stone-800 mb-3">Direct & Indirect Competitors</h3>
+                    <ul class="space-y-4">
+                        <li class="flex items-start">
+                            <span class="font-bold w-24 text-stone-400">MyMind</span>
+                            <p class="text-sm text-stone-600"><strong>The "Extension of your mind".</strong> Visual, AI-tagging, privacy-focused. <br><span class="text-xs text-orange-600">Gap: Purely capture/storage, minimal "Coaching" or action planning.</span></p>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="font-bold w-24 text-stone-400">Cosmos</span>
+                            <p class="text-sm text-stone-600"><strong>Pinterest for designers.</strong> Highly visual, graph-based connections. <br><span class="text-xs text-orange-600">Gap: No project management or daily workflow guidance.</span></p>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="font-bold w-24 text-stone-400">Notion AI</span>
+                            <p class="text-sm text-stone-600"><strong>The "Everything App".</strong> Extremely powerful but requires manual setup. <br><span class="text-xs text-orange-600">Gap: Too rigid, high maintenance friction ("Gardening" the system).</span></p>
+                        </li>
+                    </ul>
+                </div>
+                <div class="bg-white p-6 rounded-xl border border-stone-100">
+                    <h3 class="font-bold text-stone-800 mb-3">The Opportunity Gap</h3>
+                    <p class="text-sm text-stone-600 mb-4">
+                        Most apps ask "What do you want to do?" assuming the user knows. <br>
+                        <strong>Your app answers "What <em>could</em> I do given who I am right now?"</strong>
+                    </p>
+                    <div class="h-40 bg-stone-50 rounded border border-stone-200 p-4 flex items-center justify-center">
+                        <div class="text-center">
+                            <p class="font-serif italic text-lg text-stone-700">"The Creative Concierge"</p>
+                            <p class="text-xs text-stone-500 mt-2">Active Guidance + Deep Context Awareness</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="section-critique" class="hidden space-y-8">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-stone-900">Hard Critique: Viability & Reality Check</h2>
+                <p class="text-stone-600 mt-2">
+                    A demanding, unbiased look at why apps in this space fail, and how to position this one to succeed.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-xl border-l-4 border-emerald-500 shadow-sm">
+                    <h3 class="text-lg font-bold text-stone-800 mb-2">Strengths (The Hook)</h3>
+                    <ul class="list-disc pl-5 space-y-2 text-sm text-stone-600">
+                        <li><strong>Solves the "Blank Page" Paralysis:</strong> Translates scattered inspiration into actionable starting points.</li>
+                        <li><strong>Personalization Moat:</strong> By relying heavily on Multimodal RAG over the user's *own* files, the AI's value increases the more it is used, creating high switching costs.</li>
+                    </ul>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl border-l-4 border-red-500 shadow-sm">
+                    <h3 class="text-lg font-bold text-stone-800 mb-2">Fatal Flaws to Avoid</h3>
+                    <ul class="list-disc pl-5 space-y-2 text-sm text-stone-600">
+                        <li><strong>The "Data Entry" Problem:</strong> Creatives despise logging data. If they must manually type their mood or tag their files, the app is dead on arrival. <strong>Fix:</strong> Use passive emotional analysis on their voice notes [8] or conversational interactions.</li>
+                        <li><strong>The Threat of Homogenization:</strong> Relying on AI to "generate concepts" often strips the artist of their agency, leading to generic, culturally misrepresented outputs.[9] <strong>Fix:</strong> The AI must act as a <em>reflector</em>, not a creator. It should synthesize references, not generate the final art.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="bg-stone-900 text-stone-100 p-8 rounded-xl mt-8">
+                <h3 class="text-xl font-bold mb-4">The Commercial Verdict</h3>
+                <p class="leading-relaxed">
+                    To make people pay for this, it cannot just be a "fun brainstorming toy." It must be positioned as a <strong>productivity multiplier for chaotic creatives</strong>. You sell them on "getting more done without losing your mind," not just "finding inspiration." Start by targeting freelance designers, video editors, and agency art directors who manage multiple client brand identities.
+                </p>
+            </div>
+        </div>
+
+        <div id="section-roadmap" class="hidden space-y-8">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-stone-900">Python Architecture & Execution Plan</h2>
+                    <p class="text-stone-600 mt-2">A highly modular, scalable folder structure based on modern LangGraph and Streamlit agent toolkits.</p>
+                </div>
+            </div>
+
+            <div class="bg-stone-800 rounded-xl p-6 shadow-lg overflow-x-auto text-stone-300 font-mono text-sm leading-relaxed">
+<pre><code>project_muse/
+├──.env                        # API keys (OpenAI, Pinecone/Chroma, LangSmith)
+├── requirements.txt            # streamlit, langgraph, langchain, chromadb, etc.
+├── src/
+│   ├── core/                   # Core business logic & models
+│   │   ├── __init__.py
+│   │   ├── config.py           # Environment variable loading
+│   │   └── state.py            # LangGraph State definitions (TypedDict)
+│   │
+│   ├── agents/                 # LangGraph Multi-Agent logic
+│   │   ├── __init__.py
+│   │   ├── graph.py            # Main LangGraph compilation (Nodes & Edges)
+│   │   ├── reflector.py        # System 2 Reflection agent (Critiques ideas) [11]
+│   │   ├── generator.py        # Idea/Concept generation agent
+│   │   └── prioritizer.py      # Task routing based on detected mood
+│   │
+│   ├── retrieval/              # Multimodal RAG Pipeline
+│   │   ├── __init__.py
+│   │   ├── ingest.py           # PyMuPDF/Pillow ingestion logic
+│   │   ├── embeddings.py       # CLIP/OpenAI Multimodal Embeddings
+│   │   └── vectorstore.py      # ChromaDB/FAISS connection management
+│   │
+│   ├── tools/                  # Custom tools for agents to use
+│   │   ├── __init__.py
+│   │   ├── web_search.py       # Ex: Tavily search
+│   │   └── emotion_analyzer.py # Logic for prompt-based sentiment extraction
+│   │
+│   └── ui/                     # Streamlit Frontend
+│       ├── __init__.py
+│       ├── app.py              # Main Streamlit entry point (st.chat_message)
+│       └── components/         # Reusable UI bits (sidebar, metrics)
+│           ├── sidebar.py
+│           └── chat.py
+└── tests/                      # Unit testing for agents and retrieval</code></pre>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-stone-100 mt-6">
+                <h3 class="text-xl font-semibold text-stone-800 mb-4">Execution Phases</h3>
+                <ol class="list-decimal pl-5 space-y-4 text-stone-600">
+                    <li><strong>Phase 1: The RAG Foundation (src/retrieval).</strong> Build the local ChromaDB. Write scripts to embed text and images from a sample folder of your own references. Ensure semantic search works natively via a simple python script.</li>
+                    <li><strong>Phase 2: The Agentic Core (src/agents).</strong> Implement the `generator` and `reflector` nodes using LangGraph. The generator suggests a concept based on your query, and the reflector critiques it against your stored references.[11]</li>
+                    <li><strong>Phase 3: The UI (src/ui).</strong> Hook the LangGraph logic into a Streamlit chat interface. Implement `st.session_state` to maintain the conversation history and display retrieved images alongside the chat.</li>
+                </ol>
+            </div>
+        </div>
+
+        <div id="section-stack" class="hidden space-y-8">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-stone-900">Technical Architecture (MVP)</h2>
+                <p class="text-stone-600 mt-2">A lean, Python-centric stack optimized for rapid iteration and Agentic RAG.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                <div class="space-y-4">
+                    <h3 class="text-sm font-bold uppercase text-stone-400">Input / Frontend</h3>
+                    <div class="bg-white p-6 rounded-lg border-2 border-dashed border-stone-200 shadow-sm">
+                        <div class="text-3xl mb-2">💻</div>
+                        <div class="font-bold text-stone-800">Streamlit</div>
+                        <div class="text-xs text-stone-500 mt-1">Python UI Framework</div>
+                    </div>
+                    <div class="text-stone-300 text-2xl">⬇</div>
+                </div>
+
+                <div class="space-y-4">
+                    <h3 class="text-sm font-bold uppercase text-stone-400">Orchestration / LLM</h3>
+                    <div class="bg-stone-800 p-6 rounded-lg shadow-md text-white">
+                        <div class="text-3xl mb-2">🧠</div>
+                        <div class="font-bold">LangGraph</div>
+                        <div class="text-xs text-stone-400 mt-1">Multi-Agent Stateful Routing</div>
+                        <hr class="border-stone-600 my-3">
+                        <div class="font-bold text-orange-400">OpenAI GPT-4o</div>
+                        <div class="text-xs text-stone-400">Reasoning & Multimodal Gen</div>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <h3 class="text-sm font-bold uppercase text-stone-400">Memory / Storage</h3>
+                    <div class="text-stone-300 text-2xl md:hidden">⬇</div>
+                    <div class="bg-white p-6 rounded-lg border border-stone-200 shadow-sm">
+                        <div class="text-3xl mb-2">🗄️</div>
+                        <div class="font-bold text-stone-800">ChromaDB</div>
+                        <div class="text-xs text-stone-500 mt-1">Local Vector Storage</div>
+                        <hr class="border-stone-100 my-3">
+                        <div class="font-bold text-stone-800">CLIP / OpenAI Embeddings</div>
+                        <div class="text-xs text-stone-500">Multimodal Mapping</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="bg-stone-900 text-stone-400 py-12 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="font-serif italic text-lg text-stone-300 mb-4">"Structure for the unstructured mind."</p>
+            <div class="text-sm">
+                Generated Plan for Project Muse &bull; Revised Architecture
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        let currentSection = 'vision';
+
+        function navigate(sectionId) {
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('active', 'text-stone-900', 'font-semibold');
+                el.classList.add('text-stone-500');
+            });
+            const activeNav = document.getElementById('nav-' + sectionId);
+            if(activeNav) {
+                activeNav.classList.add('active', 'text-stone-900');
+                activeNav.classList.remove('text-stone-500');
+            }
+
+            ['vision', 'landscape', 'critique', 'roadmap', 'stack'].forEach(id => {
+                document.getElementById('section-' + id).classList.add('hidden');
+            });
+
+            const targetSection = document.getElementById('section-' + sectionId);
+            targetSection.classList.remove('hidden');
+            targetSection.classList.add('animate-fade-in');
+
+            currentSection = sectionId;
+
+            if (sectionId === 'landscape') {
+                renderLandscapeChart();
+            }
+        }
+
+        let chartRendered = false;
+
+        function renderLandscapeChart() {
+            if (chartRendered) return;
+            
+            const trace1 = {
+                x: [2, 8, 3, 9, 6], 
+                y: [8, 7, 3, 2, 6], 
+                text: ['Project Muse', 'Notion AI', 'MyMind', 'Todoist', 'Cosmos'],
+                mode: 'markers+text',
+                marker: {
+                    size: [55, 30, 35, 25, 30],
+                    color: ['#ea580c', '#1c1917', '#78716c', '#e7e5e4', '#a8a29e'],
+                    opacity: [0.9, 0.7, 0.7, 0.7, 0.7]
+                },
+                textposition: 'top center',
+                type: 'scatter'
+            };
+
+            const layout = {
+                title: 'Market Positioning',
+                xaxis: { title: 'Flexibility (Chaos ↔ Structure)', range: [0, 10], showgrid: true, zeroline: false },
+                yaxis: { title: 'Interactivity (Storage ↔ Active Coach)', range: [0, 10], showgrid: true, zeroline: false },
+                hovermode: 'closest',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { family: 'Inter' }
+            };
+
+            Plotly.newPlot('landscapeChart', [trace1], layout, {responsive: true, displayModeBar: false});
+            chartRendered = true;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            navigate('vision');
+        });
+    </script>
+</body>
+</html>
