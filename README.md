@@ -61,7 +61,7 @@ frontend/                React + Vite + TypeScript
     stores/              Zustand state management
     hooks/               Custom hooks for API interaction
 ```
-
+ 
 ## Features
 
 - **ASCII companion** that evolves through 5 stages as you interact
