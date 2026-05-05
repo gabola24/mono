@@ -78,67 +78,23 @@ export default function LinkGame({ isOpen, onClose, onGraphUpdate }: LinkGamePro
         setGameState('results')
         setMood('celebrating')
 
-        // Log session to backend
         const rounds = history.map(h => ({
             conceptA: h.pair.conceptA,
             conceptB: h.pair.conceptB,
-            user_connection: h.connection
+            user_connection: h.connection,
         }))
 
         try {
-            await fetch('http://localhost:8000/api/link-game/session', {
+            await fetch('/api/link-game/session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     rounds,
-                    total_time_ms: 15000 * 5, // roughly
-                    date: new Date().toISOString()
-                })
+                    total_time_ms: 15000 * 5,
+                    date: new Date().toISOString(),
+                }),
             })
-
-            // We should really auto-add these to the Mind Graph!
-            for (const h of rounds) {
-                if (h.user_connection === '--- timeout ---') continue
-
-                // Add Concept A
-                const resA = await fetch('http://localhost:8000/api/graph/nodes', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: h.conceptA, category: 'link', source: 'link-game', color: '#ffea94' })
-                })
-                const nodeA = await resA.json()
-
-                // Add Concept B
-                const resB = await fetch('http://localhost:8000/api/graph/nodes', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: h.conceptB, category: 'link', source: 'link-game', color: '#ffea94' })
-                })
-                const nodeB = await resB.json()
-
-                // Add the connection
-                const resConn = await fetch('http://localhost:8000/api/graph/nodes', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: h.user_connection, category: 'idea', source: 'link-game', color: '#f36998' })
-                })
-                const nodeConn = await resConn.json()
-
-                // Link them
-                await fetch('http://localhost:8000/api/graph/connect', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ source_id: nodeA.id, target_id: nodeConn.id, strength: 0.8 })
-                })
-                await fetch('http://localhost:8000/api/graph/connect', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ source_id: nodeB.id, target_id: nodeConn.id, strength: 0.8 })
-                })
-            }
-
             onGraphUpdate()
-
         } catch (e) {
             console.error(e)
         }

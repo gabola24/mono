@@ -140,6 +140,9 @@ node_connections = sa.Table(
     sa.Column("source_id", sa.String, sa.ForeignKey("mind_nodes.id")),
     sa.Column("target_id", sa.String, sa.ForeignKey("mind_nodes.id")),
     sa.Column("strength", sa.Float, default=0.5),
+    sa.Column("reason", sa.Text, nullable=True),
+    sa.Column("kind", sa.String, nullable=True),
+    sa.Column("created_at", sa.DateTime, server_default=sa.func.now()),
 )
 
 # ─── Project Garage ─────────────────────────────────
@@ -172,6 +175,23 @@ project_notes = sa.Table(
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(metadata.create_all)
+
+
+async def run_migrations():
+    """Idempotent ALTER TABLE statements for columns added after initial schema creation."""
+    new_columns = [
+        ("reason", "TEXT"),
+        ("kind", "TEXT"),
+        ("created_at", "DATETIME"),
+    ]
+    async with engine.begin() as conn:
+        result = await conn.execute(sa.text("PRAGMA table_info(node_connections)"))
+        existing = {row[1] for row in result.fetchall()}
+        for col_name, col_type in new_columns:
+            if col_name not in existing:
+                await conn.execute(
+                    sa.text(f"ALTER TABLE node_connections ADD COLUMN {col_name} {col_type}")
+                )
 
 
 async def get_session() -> AsyncSession:

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
     forceSimulation,
@@ -27,6 +27,8 @@ export interface MindEdge {
     source_id: string
     target_id: string
     strength: number
+    reason: string | null
+    kind: string | null
 }
 
 interface MindGraphProps {
@@ -41,9 +43,17 @@ interface SimNode extends SimulationNodeDatum, MindNode { }
 interface SimLink extends SimulationLinkDatum<SimNode> {
     id: string
     strength: number
+    reason: string | null
 }
 
 const POSITION_KEY = 'zukuri-mind-positions'
+const FILTER_KEY = 'zukuri-mind-source-filters'
+
+const SOURCE_CONFIG: Record<string, { label: string; color: string }> = {
+    'dna-import': { label: 'DNA', color: '#82aaff' },
+    'link-game': { label: 'LINK', color: '#ffea94' },
+    'manual': { label: 'MANUAL', color: '#f36998' },
+}
 
 function loadPositions(): Map<string, { x: number; y: number }> {
     try {
@@ -61,6 +71,22 @@ function savePositions(positions: Map<string, { x: number; y: number }>) {
     } catch { }
 }
 
+function loadFilters(): Set<string> {
+    try {
+        const raw = localStorage.getItem(FILTER_KEY)
+        if (!raw) return new Set(Object.keys(SOURCE_CONFIG))
+        return new Set(JSON.parse(raw) as string[])
+    } catch {
+        return new Set(Object.keys(SOURCE_CONFIG))
+    }
+}
+
+function saveFilters(active: Set<string>) {
+    try {
+        localStorage.setItem(FILTER_KEY, JSON.stringify([...active]))
+    } catch { }
+}
+
 export default function MindGraph({
     isOpen,
     onClose,
@@ -68,10 +94,38 @@ export default function MindGraph({
     edges,
 }: MindGraphProps) {
     const svgRef = useRef<SVGSVGElement>(null)
+    const containerRef = useRef<HTMLDivElement>(null)
     const [selectedNode, setSelectedNode] = useState<SimNode | null>(null)
+    const [activeSources, setActiveSources] = useState<Set<string>>(loadFilters)
+
+    const toggleSource = (src: string) => {
+        setActiveSources(prev => {
+            const next = new Set(prev)
+            if (next.has(src)) {
+                next.delete(src)
+            } else {
+                next.add(src)
+            }
+            saveFilters(next)
+            return next
+        })
+    }
+
+    const filteredNodes = useMemo(
+        () => nodes.filter(n => activeSources.has(n.source)),
+        [nodes, activeSources]
+    )
+    const filteredEdges = useMemo(() => {
+        const ids = new Set(filteredNodes.map(n => n.id))
+        return edges.filter(e => ids.has(e.source_id) && ids.has(e.target_id))
+    }, [edges, filteredNodes])
 
     const renderGraph = useCallback(() => {
-        if (!svgRef.current || nodes.length === 0) return
+        if (!svgRef.current || !containerRef.current) return
+        if (filteredNodes.length === 0) {
+            select(svgRef.current).selectAll('*').remove()
+            return
+        }
 
         const svg = select(svgRef.current)
         svg.selectAll('*').remove()
@@ -82,7 +136,7 @@ export default function MindGraph({
 
         const savedPos = loadPositions()
 
-        const simNodes: SimNode[] = nodes.map(n => ({
+        const simNodes: SimNode[] = filteredNodes.map(n => ({
             ...n,
             x: savedPos.get(n.id)?.x ?? (Math.random() * (width - padding * 2) + padding),
             y: savedPos.get(n.id)?.y ?? (Math.random() * (height - padding * 2) + padding),
@@ -90,13 +144,14 @@ export default function MindGraph({
 
         const nodeMap = new Map(simNodes.map(n => [n.id, n]))
 
-        const simLinks: SimLink[] = edges
+        const simLinks: SimLink[] = filteredEdges
             .filter(e => nodeMap.has(e.source_id) && nodeMap.has(e.target_id))
             .map(e => ({
                 id: e.id,
                 source: e.source_id,
                 target: e.target_id,
                 strength: e.strength,
+                reason: e.reason,
             }))
 
         const simulation = forceSimulation<SimNode>(simNodes)
@@ -113,22 +168,26 @@ export default function MindGraph({
             .force('x', forceX(width / 2).strength(0.04))
             .force('y', forceY(height / 2).strength(0.04))
 
-        // If nodes have saved positions, start with low alpha so they barely move
         if (simNodes.every(n => savedPos.has(n.id))) {
             simulation.alpha(0.1).alphaDecay(0.05)
         }
 
         const g = svg.append('g')
 
-        const link = g
-            .selectAll<SVGLineElement, SimLink>('line')
+        const edgeGroups = g
+            .selectAll<SVGGElement, SimLink>('g.edge')
             .data(simLinks)
             .enter()
+            .append('g')
+            .attr('class', 'edge')
+
+        edgeGroups
             .append('line')
             .attr('stroke', 'var(--color-muse-border)')
             .attr('stroke-opacity', 0.5)
             .attr('stroke-width', d => 1 + d.strength * 2)
             .attr('stroke-dasharray', '4,4')
+            .attr('pointer-events', 'none')
 
         const node = g
             .selectAll<SVGGElement, SimNode>('g.node')
@@ -170,13 +229,12 @@ export default function MindGraph({
         })
 
         simulation.on('tick', () => {
-            // Clamp all nodes within visible bounds
             simNodes.forEach(n => {
                 n.x = Math.max(padding, Math.min(width - padding, n.x ?? width / 2))
                 n.y = Math.max(padding, Math.min(height - padding, n.y ?? height / 2))
             })
 
-            link
+            edgeGroups.selectAll<SVGLineElement, SimLink>('line')
                 .attr('x1', d => (d.source as SimNode).x ?? 0)
                 .attr('y1', d => (d.source as SimNode).y ?? 0)
                 .attr('x2', d => (d.target as SimNode).x ?? 0)
@@ -195,7 +253,7 @@ export default function MindGraph({
         })
 
         return () => simulation.stop()
-    }, [nodes, edges])
+    }, [filteredNodes, filteredEdges])
 
     useEffect(() => {
         if (isOpen) {
@@ -204,28 +262,22 @@ export default function MindGraph({
         }
     }, [isOpen, renderGraph])
 
-    // Compute graph stats
-    const categoryCounts: Record<string, number> = {}
+    // Source counts from unfiltered nodes
+    const sourceCounts: Record<string, number> = {}
     nodes.forEach(n => {
-        if (n.category) {
-            categoryCounts[n.category] = (categoryCounts[n.category] || 0) + 1
-        }
+        sourceCounts[n.source] = (sourceCounts[n.source] || 0) + 1
     })
-    const topClusters = Object.entries(categoryCounts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 3)
-        .map(entry => entry[0])
 
-    // Compute connected nodes for the inspector
+    // Compute connected nodes for the inspector (using filtered edges)
     const connectedInfo = selectedNode
-        ? edges
+        ? filteredEdges
             .filter(e => e.source_id === selectedNode.id || e.target_id === selectedNode.id)
             .map(e => {
                 const peerId = e.source_id === selectedNode.id ? e.target_id : e.source_id
-                const peer = nodes.find(n => n.id === peerId)
-                return peer ? { node: peer, strength: e.strength } : null
+                const peer = filteredNodes.find(n => n.id === peerId)
+                return peer ? { node: peer, strength: e.strength, reason: e.reason } : null
             })
-            .filter(Boolean) as { node: MindNode; strength: number }[]
+            .filter(Boolean) as { node: MindNode; strength: number; reason: string | null }[]
         : []
 
     return (
@@ -237,13 +289,11 @@ export default function MindGraph({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                 >
-                    {/* Backdrop */}
                     <div
                         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
                         onClick={onClose}
                     />
 
-                    {/* Modal */}
                     <motion.div
                         className="pixel-panel relative w-[90vw] h-[80vh] max-w-5xl flex flex-col overflow-hidden"
                         initial={{ scale: 0.95, y: 10, opacity: 0 }}
@@ -252,34 +302,61 @@ export default function MindGraph({
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
                     >
                         {/* Header */}
-                        <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-muse-border bg-[var(--color-muse-surface-light)] z-10">
+                        <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-muse-border bg-[var(--color-muse-surface-light)] z-10 gap-4 flex-wrap">
                             <h2
-                                className="pixel-text text-[12px] tracking-wider pixel-glow-gold"
+                                className="pixel-text text-[12px] tracking-wider pixel-glow-gold shrink-0"
                                 style={{ color: 'var(--color-muse-accent)' }}
                             >
-                                MIND GRAPH · {nodes.length} nodes
-                                {topClusters.length > 0 && (
-                                    <span className="opacity-70 text-[9px] ml-4 font-mono text-muse-text tracking-normal">
-                                        clusters: {topClusters.join(', ')}
-                                    </span>
-                                )}
+                                MIND GRAPH · {filteredNodes.length} nodes
                             </h2>
+
+                            {/* Source filter pills */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                                {Object.entries(SOURCE_CONFIG).map(([src, cfg]) => {
+                                    const count = sourceCounts[src] ?? 0
+                                    const active = activeSources.has(src)
+                                    return (
+                                        <button
+                                            key={src}
+                                            onClick={() => toggleSource(src)}
+                                            className="pixel-text text-[7px] px-2 py-0.5 border rounded transition-all"
+                                            style={{
+                                                fontFamily: 'var(--font-pixel)',
+                                                borderColor: active ? cfg.color : 'var(--color-muse-border)',
+                                                color: active ? cfg.color : 'var(--color-muse-text-dim)',
+                                                background: active ? `${cfg.color}18` : 'transparent',
+                                                opacity: count === 0 ? 0.4 : 1,
+                                            }}
+                                        >
+                                            {cfg.label} · {count}
+                                        </button>
+                                    )
+                                })}
+                            </div>
+
                             <button
                                 onClick={onClose}
-                                className="pixel-btn-ghost text-[10px]"
+                                className="pixel-btn-ghost text-[10px] shrink-0"
                             >
                                 [CLOSE]
                             </button>
                         </div>
 
                         {/* Graph area */}
-                        <div className="relative flex-1 flex h-full overflow-hidden">
+                        <div ref={containerRef} className="relative flex-1 flex h-full overflow-hidden">
                             <div
                                 className="pointer-events-none absolute inset-0 opacity-[0.03]"
                                 style={{
                                     backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Crect x='0' y='0' width='2' height='2' fill='%23000'/%3E%3C/svg%3E")`,
                                 }}
                             />
+                            {filteredNodes.length === 0 && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <p className="pixel-text text-[10px] text-muse-text-dim opacity-50">
+                                        no nodes in selected sources
+                                    </p>
+                                </div>
+                            )}
                             <svg
                                 ref={svgRef}
                                 className="flex-1 w-full h-full"
@@ -351,8 +428,8 @@ export default function MindGraph({
                                                         className="text-[8px] px-2 py-0.5 border rounded"
                                                         style={{
                                                             fontFamily: 'var(--font-pixel)',
-                                                            borderColor: 'var(--color-muse-border)',
-                                                            color: 'var(--color-muse-accent)',
+                                                            borderColor: SOURCE_CONFIG[selectedNode.source]?.color || 'var(--color-muse-border)',
+                                                            color: SOURCE_CONFIG[selectedNode.source]?.color || 'var(--color-muse-accent)',
                                                         }}
                                                     >
                                                         {selectedNode.source}
@@ -372,7 +449,7 @@ export default function MindGraph({
                                                     </p>
                                                 ) : (
                                                     <div className="space-y-2">
-                                                        {connectedInfo.map(({ node: peer, strength }) => (
+                                                        {connectedInfo.map(({ node: peer, strength, reason }) => (
                                                             <div
                                                                 key={peer.id}
                                                                 className="p-2 rounded border cursor-pointer hover:border-muse-accent/60 transition-colors"
@@ -424,6 +501,17 @@ export default function MindGraph({
                                                                         }}
                                                                     >
                                                                         {peer.category}
+                                                                    </p>
+                                                                )}
+                                                                {reason && (
+                                                                    <p
+                                                                        className="text-[7px] mt-1.5 opacity-70 italic leading-snug"
+                                                                        style={{
+                                                                            fontFamily: 'var(--font-mono)',
+                                                                            color: 'var(--color-muse-text)',
+                                                                        }}
+                                                                    >
+                                                                        {reason}
                                                                     </p>
                                                                 )}
                                                             </div>

@@ -5,12 +5,12 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import skill_nodes, skill_edges, mind_nodes, node_connections
+from app.services.edge_reasoning import generate_edge_reason
 
 
 async def sync_mind_graph(session: AsyncSession) -> dict:
     """Mirror skill nodes/edges into the mind graph without creating duplicates."""
 
-    # Fetch all skill nodes
     skill_res = await session.execute(
         sa.select(skill_nodes.c.id, skill_nodes.c.name, skill_nodes.c.category)
     )
@@ -18,11 +18,9 @@ async def sync_mind_graph(session: AsyncSession) -> dict:
     if not skills:
         return {"added_nodes": 0, "added_edges": 0}
 
-    # Fetch existing mind nodes indexed by their text (= skill name)
     mind_res = await session.execute(sa.select(mind_nodes.c.id, mind_nodes.c.text))
     text_to_mind_id: dict[str, str] = {row.text: row.id for row in mind_res.fetchall()}
 
-    # Create mind nodes for skills that aren't there yet
     skill_name_to_mind_id: dict[str, str] = {}
     added_nodes = 0
     for skill in skills:
@@ -43,17 +41,17 @@ async def sync_mind_graph(session: AsyncSession) -> dict:
             text_to_mind_id[skill.name] = node_id
             added_nodes += 1
 
-    # Fetch all skill edges
     skill_id_to_name = {s.id: s.name for s in skills}
+
     edges_res = await session.execute(
         sa.select(
             skill_edges.c.source_id,
             skill_edges.c.target_id,
             skill_edges.c.strength,
+            skill_edges.c.reason,
         )
     )
 
-    # Fetch existing mind connections to avoid duplicates
     existing_edges_res = await session.execute(
         sa.select(node_connections.c.source_id, node_connections.c.target_id)
     )
@@ -74,6 +72,8 @@ async def sync_mind_graph(session: AsyncSession) -> dict:
         pair = frozenset([src_mind, tgt_mind])
         if pair in existing_pairs:
             continue
+
+        reason = await generate_edge_reason(src_name, tgt_name, hint=edge.reason)
         edge_id = f"edge_{uuid.uuid4().hex[:8]}"
         await session.execute(
             sa.insert(node_connections).values(
@@ -81,6 +81,8 @@ async def sync_mind_graph(session: AsyncSession) -> dict:
                 source_id=src_mind,
                 target_id=tgt_mind,
                 strength=edge.strength,
+                reason=reason,
+                kind="sync",
             )
         )
         existing_pairs.add(pair)

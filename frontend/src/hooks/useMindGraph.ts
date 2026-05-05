@@ -14,6 +14,8 @@ export interface MindEdge {
     source_id: string
     target_id: string
     strength: number
+    reason: string | null
+    kind: string | null
 }
 
 export function useMindGraph() {
@@ -22,12 +24,12 @@ export function useMindGraph() {
 
     const fetchGraph = useCallback(async () => {
         try {
-            const res = await fetch('http://localhost:8000/api/graph')
+            const res = await fetch('/api/graph')
             if (res.ok) {
                 const data = await res.json()
                 if (data.nodes.length === 0) {
-                    await fetch('http://localhost:8000/api/graph/seed', { method: 'POST' })
-                    const retryRes = await fetch('http://localhost:8000/api/graph')
+                    await fetch('/api/graph/seed', { method: 'POST' })
+                    const retryRes = await fetch('/api/graph')
                     if (retryRes.ok) {
                         const retryData = await retryRes.json()
                         setNodes(retryData.nodes)
