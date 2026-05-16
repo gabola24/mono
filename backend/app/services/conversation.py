@@ -53,10 +53,26 @@ async def save_message(session: AsyncSession, conversation_id: str, role: str, c
 
 async def stream_response(
     session: AsyncSession, conversation_id: str, user_message: str
-) -> AsyncGenerator[str, None]:
-    """Stream the assistant response token by token, then persist both messages."""
-    history = await fetch_history(session, conversation_id)
+) -> AsyncGenerator[dict, None]:
+    """Stream the assistant response as dicts, then persist both messages."""
+    # /inspire slash-command — generate an inspiration image grounded in RAG
+    stripped = user_message.strip()
+    if stripped.lower().startswith("/inspire"):
+        brief = stripped[8:].strip()
+        await save_message(session, conversation_id, "user", user_message)
+        yield {"type": "image_pending", "value": "generating inspiration..."}
+        try:
+            from app.services.image_generation import generate_inspiration
+            result = await generate_inspiration(brief)
+            yield {"type": "image", **result}
+            assistant_text = f"__image__:{result}"
+        except Exception as e:
+            yield {"type": "token", "value": f"Image generation failed: {e}"}
+            assistant_text = f"Image generation failed: {e}"
+        await save_message(session, conversation_id, "assistant", assistant_text)
+        return
 
+    history = await fetch_history(session, conversation_id)
     refs = await retrieve_context(user_message)
     rag_context = format_context_for_prompt(refs)
     api_messages = await build_messages(history, user_message, rag_context=rag_context)
@@ -69,14 +85,14 @@ async def stream_response(
         messages=api_messages,
         stream=True,
         temperature=0.9,
-        max_tokens=512,
+        max_tokens=160,
     )
 
     async for chunk in stream:
         delta = chunk.choices[0].delta
         if delta.content:
             full_response.append(delta.content)
-            yield delta.content
+            yield {"type": "token", "value": delta.content}
 
     assistant_text = "".join(full_response)
     await save_message(session, conversation_id, "assistant", assistant_text)

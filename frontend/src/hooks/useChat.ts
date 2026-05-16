@@ -11,6 +11,7 @@ export function useChat(onAfterMessage?: () => void) {
     setConversationId,
     addMessage,
     appendToLast,
+    updateLast,
     setStreaming,
   } = useChatStore()
 
@@ -76,6 +77,18 @@ export function useChat(onAfterMessage?: () => void) {
                 started = true
               }
               appendToLast(data.value)
+            } else if (data.type === 'image_pending') {
+              setMood('thinking')
+              updateLast((msg) => ({ ...msg, pending: 'image' as const }))
+            } else if (data.type === 'image') {
+              updateLast((msg) => ({
+                ...msg,
+                content: data.prompt ?? '',
+                image: { url: data.url, prompt: data.prompt, refIds: data.ref_ids },
+                pending: undefined,
+              }))
+              setMood('celebrating')
+              started = true
             }
           }
         }
@@ -95,7 +108,7 @@ export function useChat(onAfterMessage?: () => void) {
         setMood('idle')
       }
     },
-    [conversationId, isStreaming, addMessage, appendToLast, setStreaming, setConversationId, setMood, addXp, fetchTree, fetchSummary, onAfterMessage]
+    [conversationId, isStreaming, addMessage, appendToLast, updateLast, setStreaming, setConversationId, setMood, addXp, fetchTree, fetchSummary, onAfterMessage]
   )
 
   return { messages, isStreaming, sendMessage }

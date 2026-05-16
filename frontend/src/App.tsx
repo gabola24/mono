@@ -8,7 +8,7 @@ import WorkspacePanel from './components/Workspace/WorkspacePanel'
 import GaragePanel from './components/Garage/GaragePanel'
 import AsciiMiniTree from './components/SkillTree/AsciiMiniTree'
 import MindGraph from './components/Graph/MindGraph'
-import LinkGame from './components/LinkGame/LinkGame'
+import GamesMenu from './components/Games/GamesMenu'
 import BadgeToast from './components/SkillTree/BadgeToast'
 import StatsPanel from './components/Stats/StatsPanel'
 import type { DailyStat } from './components/Stats/StatsPanel'
@@ -27,7 +27,7 @@ export default function App() {
   const [workspaceOpen, setWorkspaceOpen] = useState(false)
   const [garageOpen, setGarageOpen] = useState(false)
   const [graphOpen, setGraphOpen] = useState(false)
-  const [linkGameOpen, setLinkGameOpen] = useState(false)
+  const [gamesOpen, setGamesOpen] = useState(false)
   const { stats } = useReferences()
   const {
     edges, topSkills,
@@ -143,8 +143,8 @@ export default function App() {
             <button onClick={() => setFeedOpen(true)} className="pixel-btn">
               + feed
             </button>
-            <button onClick={() => setLinkGameOpen(true)} className="pixel-btn text-pixel-gold border-pixel-gold ml-2">
-              PLAY LINK
+            <button onClick={() => setGamesOpen(true)} className="pixel-btn text-pixel-gold border-pixel-gold ml-2">
+              ARCADE
             </button>
           </div>
         </div>
@@ -187,10 +187,10 @@ export default function App() {
         onCheckIn={handleCheckIn}
       />
 
-      <LinkGame
-        isOpen={linkGameOpen}
-        onClose={() => setLinkGameOpen(false)}
-        onGraphUpdate={fetchGraph}
+      <GamesMenu
+        isOpen={gamesOpen}
+        onClose={() => setGamesOpen(false)}
+        onAfterPlay={fetchGraph}
       />
 
       {/* Mind Graph Modal */}

@@ -23,26 +23,42 @@ export default function MessageBubble({ message, isLatest }: Props) {
             : 'bg-muse-surface-light text-muse-text border border-muse-border rounded-bl-sm'
         }`}
       >
-        {!isUser && message.content === '' ? (
+        {!isUser && message.pending === 'image' ? (
+          <span className="inline-flex flex-col gap-2">
+            <span className="text-xs opacity-50">✦ generating inspiration...</span>
+            <span className="inline-flex gap-1.5 py-1">
+              {[0, 0.2, 0.4].map((delay) => (
+                <motion.span
+                  key={delay}
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{ background: 'var(--color-crt-amber)' }}
+                  animate={{ opacity: [0.3, 1, 0.3] }}
+                  transition={{ duration: 1, repeat: Infinity, delay }}
+                />
+              ))}
+            </span>
+          </span>
+        ) : !isUser && message.image ? (
+          <span className="flex flex-col gap-2">
+            <img
+              src={message.image.url}
+              alt={message.image.prompt}
+              className="rounded-lg w-full max-w-[280px] border border-muse-border"
+              loading="lazy"
+            />
+            <span className="text-xs opacity-50 italic">{message.image.prompt}</span>
+          </span>
+        ) : !isUser && message.content === '' ? (
           <span className="inline-flex gap-1.5 py-1">
-            <motion.span
-              className="w-1.5 h-1.5 rounded-full"
-              style={{ background: 'var(--color-crt-amber)' }}
-              animate={{ opacity: [0.3, 1, 0.3] }}
-              transition={{ duration: 1, repeat: Infinity, delay: 0 }}
-            />
-            <motion.span
-              className="w-1.5 h-1.5 rounded-full"
-              style={{ background: 'var(--color-crt-amber)' }}
-              animate={{ opacity: [0.3, 1, 0.3] }}
-              transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}
-            />
-            <motion.span
-              className="w-1.5 h-1.5 rounded-full"
-              style={{ background: 'var(--color-crt-amber)' }}
-              animate={{ opacity: [0.3, 1, 0.3] }}
-              transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}
-            />
+            {[0, 0.2, 0.4].map((delay) => (
+              <motion.span
+                key={delay}
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ background: 'var(--color-crt-amber)' }}
+                animate={{ opacity: [0.3, 1, 0.3] }}
+                transition={{ duration: 1, repeat: Infinity, delay }}
+              />
+            ))}
           </span>
         ) : (
           message.content

@@ -23,8 +23,8 @@ async def chat(req: MessageRequest, session: AsyncSession = Depends(get_session)
 
     async def event_stream():
         yield f"data: {json.dumps({'type': 'conversation_id', 'value': conversation_id})}\n\n"
-        async for token in stream_response(session, conversation_id, req.content):
-            yield f"data: {json.dumps({'type': 'token', 'value': token})}\n\n"
+        async for event in stream_response(session, conversation_id, req.content):
+            yield f"data: {json.dumps(event)}\n\n"
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

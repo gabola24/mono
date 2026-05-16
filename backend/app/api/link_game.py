@@ -41,7 +41,7 @@ async def log_link_session(
     edges_added = 0
 
     for round_ in session_data.rounds:
-        if round_.user_connection.strip() == "--- timeout ---":
+        if round_.user_connection.strip() in ("--- timeout ---", "--- skip ---", ""):
             continue
 
         id_a = await _upsert_node(session, round_.conceptA)
