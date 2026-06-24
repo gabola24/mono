@@ -18,24 +18,23 @@ from app.api.companion import router as companion_router
 from app.api.stats import router as stats_router
 from app.api.graph import router as graph_router
 from app.api.link_game import router as link_game_router
-from app.db.database import init_db, run_migrations
+from app.config import settings
 
 UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_db()
-    await run_migrations()
+    # Schema is managed by Alembic — run `alembic upgrade head` before starting.
     UPLOAD_DIR.mkdir(exist_ok=True)
     yield
 
 
-app = FastAPI(title="Project Muse", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Zukuri", version="0.2.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=settings.cors_origins.split(","),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

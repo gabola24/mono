@@ -4,7 +4,8 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     openai_api_key: str = ""
-    database_url: str = "sqlite+aiosqlite:///./muse.db"
+    database_url: str = "postgresql+asyncpg://zukuri:zukuri@localhost:5432/zukuri"
+    cors_origins: str = "http://localhost:5173"
 
     # Per-purpose model routing — change individual models without touching code
     chat_model: str = "gpt-4o-mini"

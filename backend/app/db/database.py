@@ -1,11 +1,19 @@
 from __future__ import annotations
+from sqlalchemy import event
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from pgvector.sqlalchemy import Vector
 
 from app.config import settings
 
 engine = create_async_engine(settings.database_url, echo=False)
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+# Register pgvector codec for asyncpg connections
+@event.listens_for(engine.sync_engine, "connect")
+def _register_vector(dbapi_conn, _):
+    from pgvector.asyncpg import register_vector
+    dbapi_conn.run_sync(register_vector)
 
 metadata = sa.MetaData()
 
@@ -35,6 +43,7 @@ references = sa.Table(
     sa.Column("title", sa.String, nullable=False),
     sa.Column("content", sa.Text, nullable=False),
     sa.Column("file_path", sa.String, nullable=True),
+    sa.Column("embedding", Vector(1536), nullable=True),
     sa.Column("created_at", sa.DateTime, server_default=sa.func.now()),
 )
 
@@ -126,10 +135,10 @@ mind_nodes = sa.Table(
     "mind_nodes",
     metadata,
     sa.Column("id", sa.String, primary_key=True),
-    sa.Column("text", sa.Text, nullable=False),  # max 280 chars logic enforced in pydantic
-    sa.Column("category", sa.String, nullable=True), # idea | project | learning | question
+    sa.Column("text", sa.Text, nullable=False),
+    sa.Column("category", sa.String, nullable=True),
     sa.Column("color", sa.String, nullable=True),
-    sa.Column("source", sa.String, default="manual"), # manual | link-game | dna-import
+    sa.Column("source", sa.String, default="manual"),
     sa.Column("created_at", sa.DateTime, server_default=sa.func.now()),
 )
 
@@ -170,28 +179,6 @@ project_notes = sa.Table(
     sa.Column("note_type", sa.String, default="thought"),
     sa.Column("created_at", sa.DateTime, server_default=sa.func.now()),
 )
-
-
-async def init_db():
-    async with engine.begin() as conn:
-        await conn.run_sync(metadata.create_all)
-
-
-async def run_migrations():
-    """Idempotent ALTER TABLE statements for columns added after initial schema creation."""
-    new_columns = [
-        ("reason", "TEXT"),
-        ("kind", "TEXT"),
-        ("created_at", "DATETIME"),
-    ]
-    async with engine.begin() as conn:
-        result = await conn.execute(sa.text("PRAGMA table_info(node_connections)"))
-        existing = {row[1] for row in result.fetchall()}
-        for col_name, col_type in new_columns:
-            if col_name not in existing:
-                await conn.execute(
-                    sa.text(f"ALTER TABLE node_connections ADD COLUMN {col_name} {col_type}")
-                )
 
 
 async def get_session() -> AsyncSession:

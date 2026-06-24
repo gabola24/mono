@@ -8,7 +8,6 @@ from fastapi import APIRouter, Depends, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_session, references
-from app.db.vectorstore import add_reference, delete_reference, reference_count
 from app.models.reference import TextReferenceRequest, ReferenceResponse, ReferenceStats
 from app.services.embeddings import embed_text, describe_image
 from app.services.skill_discovery import process_skill_discovery
@@ -42,14 +41,7 @@ async def add_text_reference(
     ref_id = str(uuid.uuid4())
     title = req.title or req.content[:60].strip()
     now = datetime.now(timezone.utc)
-
     embedding = await embed_text(req.content)
-    add_reference(
-        ref_id=ref_id,
-        embedding=embedding,
-        document=req.content,
-        metadata={"type": "text", "title": title, "created_at": now.isoformat()},
-    )
 
     await session.execute(
         references.insert().values(
@@ -58,11 +50,11 @@ async def add_text_reference(
             title=title,
             content=req.content,
             file_path=None,
+            embedding=embedding,
             created_at=now,
         )
     )
     await session.commit()
-
     await process_skill_discovery(session, req.content)
 
     return ReferenceResponse(
@@ -78,7 +70,6 @@ async def add_image_reference(
 ):
     if file.content_type not in ALLOWED_IMAGE_TYPES:
         from fastapi import HTTPException
-
         raise HTTPException(400, f"Unsupported image type: {file.content_type}")
 
     ref_id = str(uuid.uuid4())
@@ -89,14 +80,7 @@ async def add_image_reference(
     description = await describe_image(str(file_path))
     title = title or f"Image: {file.filename or 'upload'}"
     now = datetime.now(timezone.utc)
-
     embedding = await embed_text(description)
-    add_reference(
-        ref_id=ref_id,
-        embedding=embedding,
-        document=description,
-        metadata={"type": "image", "title": title, "created_at": now.isoformat()},
-    )
 
     await session.execute(
         references.insert().values(
@@ -105,11 +89,11 @@ async def add_image_reference(
             title=title,
             content=description,
             file_path=str(file_path),
+            embedding=embedding,
             created_at=now,
         )
     )
     await session.commit()
-
     await process_skill_discovery(session, description)
 
     return ReferenceResponse(
@@ -153,13 +137,14 @@ async def remove_reference(ref_id: str, session: AsyncSession = Depends(get_sess
 
     await session.execute(sa.delete(references).where(references.c.id == ref_id))
     await session.commit()
-    delete_reference(ref_id)
     return {"status": "deleted"}
 
 
 @router.get("/references/stats", response_model=ReferenceStats)
 async def get_stats(session: AsyncSession = Depends(get_session)):
-    total = reference_count()
+    total_result = await session.execute(sa.select(sa.func.count()).select_from(references))
+    total = total_result.scalar() or 0
+
     text_result = await session.execute(
         sa.select(sa.func.count()).where(references.c.type == "text")
     )

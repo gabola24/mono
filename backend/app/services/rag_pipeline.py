@@ -1,29 +1,46 @@
 from __future__ import annotations
+import sqlalchemy as sa
+
+from app.db.database import async_session, references
 from app.services.embeddings import embed_text
-from app.db.vectorstore import query_references, reference_count
 
 
 async def retrieve_context(query: str, n_results: int = 5) -> list[dict]:
-    """Retrieve the most relevant references for a given query."""
-    if reference_count() == 0:
-        return []
-
-    query_embedding = await embed_text(query)
-    results = query_references(query_embedding, n_results=n_results)
-
-    context = []
-    for i, doc_id in enumerate(results["ids"][0]):
-        meta = results["metadatas"][0][i]
-        context.append(
-            {
-                "id": doc_id,
-                "type": meta.get("type", "text"),
-                "title": meta.get("title", "Untitled"),
-                "content": results["documents"][0][i],
-                "relevance": 1 - results["distances"][0][i],
-            }
+    """Retrieve the most relevant references via pgvector cosine similarity."""
+    async with async_session() as session:
+        count_result = await session.execute(
+            sa.select(sa.func.count())
+            .select_from(references)
+            .where(references.c.embedding.isnot(None))
         )
-    return context
+        if (count_result.scalar() or 0) == 0:
+            return []
+
+        query_embedding = await embed_text(query)
+
+        rows = await session.execute(
+            sa.select(
+                references.c.id,
+                references.c.type,
+                references.c.title,
+                references.c.content,
+                references.c.embedding.cosine_distance(query_embedding).label("distance"),
+            )
+            .where(references.c.embedding.isnot(None))
+            .order_by("distance")
+            .limit(n_results)
+        )
+
+        return [
+            {
+                "id": row.id,
+                "type": row.type,
+                "title": row.title,
+                "content": row.content,
+                "relevance": max(0.0, 1.0 - row.distance),
+            }
+            for row in rows.fetchall()
+        ]
 
 
 def format_context_for_prompt(references: list[dict]) -> str:
