@@ -68,15 +68,19 @@ def _level_from_xp(xp: int) -> int:
     return 5
 
 
-async def process_skill_discovery(session: AsyncSession, content: str):
+async def process_skill_discovery(session: AsyncSession, content: str, user_id: str):
     """Run skill discovery on content and persist results."""
-    result = await session.execute(sa.select(skill_nodes.c.name))
+    result = await session.execute(
+        sa.select(skill_nodes.c.name).where(skill_nodes.c.user_id == user_id)
+    )
     existing_names = [row.name for row in result.fetchall()]
 
     discovered = await discover_skills(content, existing_names)
 
     node_name_to_id: dict[str, str] = {}
-    existing_result = await session.execute(sa.select(skill_nodes.c.id, skill_nodes.c.name))
+    existing_result = await session.execute(
+        sa.select(skill_nodes.c.id, skill_nodes.c.name).where(skill_nodes.c.user_id == user_id)
+    )
     for row in existing_result.fetchall():
         node_name_to_id[row.name] = row.id
 
@@ -105,6 +109,7 @@ async def process_skill_discovery(session: AsyncSession, content: str):
             await session.execute(
                 skill_nodes.insert().values(
                     id=node_id,
+                    user_id=user_id,
                     name=name,
                     category=skill.get("category"),
                     description=skill.get("description"),
@@ -125,20 +130,22 @@ async def process_skill_discovery(session: AsyncSession, content: str):
 
         existing_edge = await session.execute(
             sa.select(skill_edges.c.id).where(
+                skill_edges.c.user_id == user_id,
                 sa.or_(
                     sa.and_(skill_edges.c.source_id == source_id, skill_edges.c.target_id == target_id),
                     sa.and_(skill_edges.c.source_id == target_id, skill_edges.c.target_id == source_id),
-                )
+                ),
             )
         )
         if existing_edge.fetchone():
             await session.execute(
                 skill_edges.update()
                 .where(
+                    skill_edges.c.user_id == user_id,
                     sa.or_(
                         sa.and_(skill_edges.c.source_id == source_id, skill_edges.c.target_id == target_id),
                         sa.and_(skill_edges.c.source_id == target_id, skill_edges.c.target_id == source_id),
-                    )
+                    ),
                 )
                 .values(strength=sa.func.min(skill_edges.c.strength + 0.1, 1.0))
             )
@@ -146,6 +153,7 @@ async def process_skill_discovery(session: AsyncSession, content: str):
             await session.execute(
                 skill_edges.insert().values(
                     id=str(uuid.uuid4()),
+                    user_id=user_id,
                     source_id=source_id,
                     target_id=target_id,
                     strength=0.5,
@@ -155,7 +163,7 @@ async def process_skill_discovery(session: AsyncSession, content: str):
 
     await session.commit()
 
-    badges = await check_and_award_badges(session)
+    badges = await check_and_award_badges(session, user_id)
     new_badges.extend(badges)
 
     return new_badges

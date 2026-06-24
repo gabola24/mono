@@ -18,16 +18,19 @@ client = AsyncOpenAI(api_key=settings.openai_api_key)
 HISTORY_TURNS = 10  # keep last N user+assistant pairs to cap context cost
 
 
-async def get_or_create_conversation(session: AsyncSession, conversation_id: str | None) -> str:
+async def get_or_create_conversation(session: AsyncSession, conversation_id: str | None, user_id: str) -> str:
     if conversation_id:
         result = await session.execute(
-            sa.select(conversations.c.id).where(conversations.c.id == conversation_id)
+            sa.select(conversations.c.id).where(
+                conversations.c.id == conversation_id,
+                conversations.c.user_id == user_id,
+            )
         )
         if result.scalar_one_or_none():
             return conversation_id
 
     new_id = str(uuid.uuid4())
-    await session.execute(conversations.insert().values(id=new_id))
+    await session.execute(conversations.insert().values(id=new_id, user_id=user_id))
     await session.commit()
     return new_id
 
@@ -43,10 +46,11 @@ async def fetch_history(session: AsyncSession, conversation_id: str) -> list[dic
     return [{"role": row.role, "content": row.content} for row in rows]
 
 
-async def save_message(session: AsyncSession, conversation_id: str, role: str, content: str):
+async def save_message(session: AsyncSession, conversation_id: str, role: str, content: str, user_id: str):
     await session.execute(
         messages.insert().values(
             id=str(uuid.uuid4()),
+            user_id=user_id,
             conversation_id=conversation_id,
             role=role,
             content=content,
@@ -57,32 +61,31 @@ async def save_message(session: AsyncSession, conversation_id: str, role: str, c
 
 
 async def stream_response(
-    session: AsyncSession, conversation_id: str, user_message: str
+    session: AsyncSession, conversation_id: str, user_message: str, user_id: str
 ) -> AsyncGenerator[dict, None]:
     """Stream the assistant response as dicts, then persist both messages."""
-    # /inspire slash-command — generate an inspiration image grounded in RAG
     stripped = user_message.strip()
     if stripped.lower().startswith("/inspire"):
         brief = stripped[8:].strip()
-        await save_message(session, conversation_id, "user", user_message)
+        await save_message(session, conversation_id, "user", user_message, user_id)
         yield {"type": "image_pending", "value": "generating inspiration..."}
         try:
             from app.services.image_generation import generate_inspiration
-            result = await generate_inspiration(brief)
+            result = await generate_inspiration(brief, user_id)
             yield {"type": "image", **result}
             assistant_text = f"__image__:{result}"
         except Exception as e:
             yield {"type": "token", "value": f"Image generation failed: {e}"}
             assistant_text = f"Image generation failed: {e}"
-        await save_message(session, conversation_id, "assistant", assistant_text)
+        await save_message(session, conversation_id, "assistant", assistant_text, user_id)
         return
 
     history = await fetch_history(session, conversation_id)
-    refs = await retrieve_context(user_message)
+    refs = await retrieve_context(user_message, user_id)
     rag_context = format_context_for_prompt(refs)
-    api_messages = await build_messages(history, user_message, rag_context=rag_context)
+    api_messages = await build_messages(history, user_message, user_id, rag_context=rag_context)
 
-    await save_message(session, conversation_id, "user", user_message)
+    await save_message(session, conversation_id, "user", user_message, user_id)
 
     full_response = []
     stream = await client.chat.completions.create(
@@ -100,27 +103,29 @@ async def stream_response(
             yield {"type": "token", "value": delta.content}
 
     assistant_text = "".join(full_response)
-    await save_message(session, conversation_id, "assistant", assistant_text)
+    await save_message(session, conversation_id, "assistant", assistant_text, user_id)
 
     combined = f"User: {user_message}\nAssistant: {assistant_text}"
-    asyncio.create_task(_background_analysis(combined))
+    asyncio.create_task(_background_analysis(combined, user_id))
 
 
-async def _background_analysis(combined: str) -> None:
+async def _background_analysis(combined: str, user_id: str) -> None:
     """Run skill discovery + mind-graph sync in a background task with its own session."""
     from app.services.skill_discovery import process_skill_discovery
     from app.services.mind_graph_sync import sync_mind_graph
     try:
         async with async_session() as session:
-            await process_skill_discovery(session, combined)
-            await sync_mind_graph(session)
+            await process_skill_discovery(session, combined, user_id)
+            await sync_mind_graph(session, user_id)
     except Exception:
         pass  # background task — never crash the caller
 
 
-async def list_conversations(session: AsyncSession) -> list[dict]:
+async def list_conversations(session: AsyncSession, user_id: str) -> list[dict]:
     result = await session.execute(
-        sa.select(conversations).order_by(conversations.c.created_at.desc())
+        sa.select(conversations)
+        .where(conversations.c.user_id == user_id)
+        .order_by(conversations.c.created_at.desc())
     )
     return [
         {"id": row.id, "title": row.title, "created_at": str(row.created_at)}

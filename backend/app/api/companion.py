@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth import get_current_user
 from app.db.database import get_session
 
 router = APIRouter(tags=["companion"])
@@ -41,15 +42,15 @@ class TraitsResponse(BaseModel):
 
 
 @router.get("/companion/traits", response_model=TraitsResponse)
-async def get_companion_traits(session: AsyncSession = Depends(get_session)):
-    """
-    Derives 0-2 visual traits for Mono based on the user's top skill categories.
-    Fast: reads from skills table, no LLM call.
-    """
+async def get_companion_traits(
+    session: AsyncSession = Depends(get_session),
+    user_id: str = Depends(get_current_user),
+):
     from app.db.database import skill_nodes  # late import to avoid circular
 
     result = await session.execute(
         sa.select(skill_nodes.c.name, skill_nodes.c.category, skill_nodes.c.level)
+        .where(skill_nodes.c.user_id == user_id)
         .order_by(skill_nodes.c.level.desc())
         .limit(20)
     )

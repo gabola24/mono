@@ -7,21 +7,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import activity_log
 
 
-async def record_activity(session: AsyncSession):
+async def record_activity(session: AsyncSession, user_id: str) -> None:
     today = date.today()
     existing = await session.execute(
-        sa.select(activity_log.c.id).where(activity_log.c.date == today)
+        sa.select(activity_log.c.id).where(
+            activity_log.c.user_id == user_id,
+            activity_log.c.date == today,
+        )
     )
     if existing.scalar_one_or_none():
         return
-
-    await session.execute(activity_log.insert().values(date=today))
+    await session.execute(activity_log.insert().values(user_id=user_id, date=today))
     await session.commit()
 
 
-async def get_streak_info(session: AsyncSession) -> dict:
+async def get_streak_info(session: AsyncSession, user_id: str) -> dict:
     result = await session.execute(
-        sa.select(activity_log.c.date).order_by(activity_log.c.date.desc())
+        sa.select(activity_log.c.date)
+        .where(activity_log.c.user_id == user_id)
+        .order_by(activity_log.c.date.desc())
     )
     dates = [row.date for row in result.fetchall()]
 

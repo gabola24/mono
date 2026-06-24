@@ -5,13 +5,13 @@ from app.db.database import async_session, references
 from app.services.embeddings import embed_text
 
 
-async def retrieve_context(query: str, n_results: int = 5) -> list[dict]:
+async def retrieve_context(query: str, user_id: str, n_results: int = 5) -> list[dict]:
     """Retrieve the most relevant references via pgvector cosine similarity."""
     async with async_session() as session:
         count_result = await session.execute(
             sa.select(sa.func.count())
             .select_from(references)
-            .where(references.c.embedding.isnot(None))
+            .where(references.c.embedding.isnot(None), references.c.user_id == user_id)
         )
         if (count_result.scalar() or 0) == 0:
             return []
@@ -26,7 +26,7 @@ async def retrieve_context(query: str, n_results: int = 5) -> list[dict]:
                 references.c.content,
                 references.c.embedding.cosine_distance(query_embedding).label("distance"),
             )
-            .where(references.c.embedding.isnot(None))
+            .where(references.c.embedding.isnot(None), references.c.user_id == user_id)
             .order_by("distance")
             .limit(n_results)
         )

@@ -4,9 +4,10 @@ import uuid
 from datetime import datetime, timezone
 
 import sqlalchemy as sa
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth import get_current_user
 from app.db.database import get_session, plans
 from app.models.plan import (
     GeneratePlanRequest,
@@ -33,8 +34,12 @@ def _row_to_response(row) -> PlanResponse:
 
 
 @router.post("/plans/generate", response_model=PlanResponse)
-async def create_plan(req: GeneratePlanRequest, session: AsyncSession = Depends(get_session)):
-    refs = await retrieve_context(req.topic, n_results=3)
+async def create_plan(
+    req: GeneratePlanRequest,
+    session: AsyncSession = Depends(get_session),
+    user_id: str = Depends(get_current_user),
+):
+    refs = await retrieve_context(req.topic, user_id, n_results=3)
     rag_context = format_context_for_prompt(refs) if refs else ""
     context = req.context + ("\n" + rag_context if rag_context else "")
 
@@ -50,6 +55,7 @@ async def create_plan(req: GeneratePlanRequest, session: AsyncSession = Depends(
     await session.execute(
         plans.insert().values(
             id=plan_id,
+            user_id=user_id,
             title=result.get("title", req.topic[:60]),
             summary=result.get("summary", ""),
             steps_json=json.dumps(steps),
@@ -70,21 +76,32 @@ async def create_plan(req: GeneratePlanRequest, session: AsyncSession = Depends(
 
 
 @router.get("/plans", response_model=list[PlanResponse])
-async def list_plans(session: AsyncSession = Depends(get_session)):
-    result = await session.execute(sa.select(plans).order_by(plans.c.created_at.desc()))
+async def list_plans(
+    session: AsyncSession = Depends(get_session),
+    user_id: str = Depends(get_current_user),
+):
+    result = await session.execute(
+        sa.select(plans)
+        .where(plans.c.user_id == user_id)
+        .order_by(plans.c.created_at.desc())
+    )
     return [_row_to_response(row) for row in result.fetchall()]
 
 
 @router.patch("/plans/{plan_id}/step")
 async def update_step(
-    plan_id: str, req: UpdateStepRequest, session: AsyncSession = Depends(get_session)
+    plan_id: str,
+    req: UpdateStepRequest,
+    session: AsyncSession = Depends(get_session),
+    user_id: str = Depends(get_current_user),
 ):
     result = await session.execute(
-        sa.select(plans.c.steps_json).where(plans.c.id == plan_id)
+        sa.select(plans.c.steps_json).where(
+            plans.c.id == plan_id, plans.c.user_id == user_id
+        )
     )
     row = result.fetchone()
     if not row:
-        from fastapi import HTTPException
         raise HTTPException(404, "Plan not found")
 
     steps = json.loads(row.steps_json)
@@ -94,14 +111,22 @@ async def update_step(
             break
 
     await session.execute(
-        sa.update(plans).where(plans.c.id == plan_id).values(steps_json=json.dumps(steps))
+        sa.update(plans)
+        .where(plans.c.id == plan_id, plans.c.user_id == user_id)
+        .values(steps_json=json.dumps(steps))
     )
     await session.commit()
     return {"status": "updated"}
 
 
 @router.delete("/plans/{plan_id}")
-async def delete_plan(plan_id: str, session: AsyncSession = Depends(get_session)):
-    await session.execute(sa.delete(plans).where(plans.c.id == plan_id))
+async def delete_plan(
+    plan_id: str,
+    session: AsyncSession = Depends(get_session),
+    user_id: str = Depends(get_current_user),
+):
+    await session.execute(
+        sa.delete(plans).where(plans.c.id == plan_id, plans.c.user_id == user_id)
+    )
     await session.commit()
     return {"status": "deleted"}

@@ -7,6 +7,7 @@ import sqlalchemy as sa
 from fastapi import APIRouter, Depends, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth import get_current_user
 from app.db.database import get_session, references
 from app.models.reference import TextReferenceRequest, ReferenceResponse, ReferenceStats
 from app.services.embeddings import embed_text, describe_image
@@ -36,7 +37,9 @@ def _trust_level(count: int) -> float:
 
 @router.post("/references/text", response_model=ReferenceResponse)
 async def add_text_reference(
-    req: TextReferenceRequest, session: AsyncSession = Depends(get_session)
+    req: TextReferenceRequest,
+    session: AsyncSession = Depends(get_session),
+    user_id: str = Depends(get_current_user),
 ):
     ref_id = str(uuid.uuid4())
     title = req.title or req.content[:60].strip()
@@ -46,6 +49,7 @@ async def add_text_reference(
     await session.execute(
         references.insert().values(
             id=ref_id,
+            user_id=user_id,
             type="text",
             title=title,
             content=req.content,
@@ -55,7 +59,7 @@ async def add_text_reference(
         )
     )
     await session.commit()
-    await process_skill_discovery(session, req.content)
+    await process_skill_discovery(session, req.content, user_id)
 
     return ReferenceResponse(
         id=ref_id, type="text", title=title, content=req.content, created_at=now.isoformat()
@@ -67,6 +71,7 @@ async def add_image_reference(
     file: UploadFile = File(...),
     title: str = Form(""),
     session: AsyncSession = Depends(get_session),
+    user_id: str = Depends(get_current_user),
 ):
     if file.content_type not in ALLOWED_IMAGE_TYPES:
         from fastapi import HTTPException
@@ -85,6 +90,7 @@ async def add_image_reference(
     await session.execute(
         references.insert().values(
             id=ref_id,
+            user_id=user_id,
             type="image",
             title=title,
             content=description,
@@ -94,7 +100,7 @@ async def add_image_reference(
         )
     )
     await session.commit()
-    await process_skill_discovery(session, description)
+    await process_skill_discovery(session, description, user_id)
 
     return ReferenceResponse(
         id=ref_id,
@@ -107,9 +113,14 @@ async def add_image_reference(
 
 
 @router.get("/references", response_model=list[ReferenceResponse])
-async def list_references(session: AsyncSession = Depends(get_session)):
+async def list_references(
+    session: AsyncSession = Depends(get_session),
+    user_id: str = Depends(get_current_user),
+):
     result = await session.execute(
-        sa.select(references).order_by(references.c.created_at.desc())
+        sa.select(references)
+        .where(references.c.user_id == user_id)
+        .order_by(references.c.created_at.desc())
     )
     return [
         ReferenceResponse(
@@ -125,9 +136,15 @@ async def list_references(session: AsyncSession = Depends(get_session)):
 
 
 @router.delete("/references/{ref_id}")
-async def remove_reference(ref_id: str, session: AsyncSession = Depends(get_session)):
+async def remove_reference(
+    ref_id: str,
+    session: AsyncSession = Depends(get_session),
+    user_id: str = Depends(get_current_user),
+):
     result = await session.execute(
-        sa.select(references.c.file_path).where(references.c.id == ref_id)
+        sa.select(references.c.file_path).where(
+            references.c.id == ref_id, references.c.user_id == user_id
+        )
     )
     row = result.fetchone()
     if row and row.file_path:
@@ -135,21 +152,36 @@ async def remove_reference(ref_id: str, session: AsyncSession = Depends(get_sess
         if fp.exists():
             fp.unlink()
 
-    await session.execute(sa.delete(references).where(references.c.id == ref_id))
+    await session.execute(
+        sa.delete(references).where(
+            references.c.id == ref_id, references.c.user_id == user_id
+        )
+    )
     await session.commit()
     return {"status": "deleted"}
 
 
 @router.get("/references/stats", response_model=ReferenceStats)
-async def get_stats(session: AsyncSession = Depends(get_session)):
-    total_result = await session.execute(sa.select(sa.func.count()).select_from(references))
+async def get_stats(
+    session: AsyncSession = Depends(get_session),
+    user_id: str = Depends(get_current_user),
+):
+    total_result = await session.execute(
+        sa.select(sa.func.count())
+        .select_from(references)
+        .where(references.c.user_id == user_id)
+    )
     total = total_result.scalar() or 0
 
     text_result = await session.execute(
-        sa.select(sa.func.count()).where(references.c.type == "text")
+        sa.select(sa.func.count())
+        .select_from(references)
+        .where(references.c.type == "text", references.c.user_id == user_id)
     )
     image_result = await session.execute(
-        sa.select(sa.func.count()).where(references.c.type == "image")
+        sa.select(sa.func.count())
+        .select_from(references)
+        .where(references.c.type == "image", references.c.user_id == user_id)
     )
     return ReferenceStats(
         total_count=total,

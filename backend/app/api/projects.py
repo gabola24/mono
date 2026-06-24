@@ -7,6 +7,7 @@ import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth import get_current_user
 from app.db.database import get_session, projects, project_notes
 from app.models.project import (
     ProjectCreateRequest,
@@ -54,13 +55,16 @@ async def _build_response(session: AsyncSession, row) -> ProjectResponse:
 
 @router.post("/projects", response_model=ProjectResponse)
 async def create_project(
-    req: ProjectCreateRequest, session: AsyncSession = Depends(get_session)
+    req: ProjectCreateRequest,
+    session: AsyncSession = Depends(get_session),
+    user_id: str = Depends(get_current_user),
 ):
     project_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
     await session.execute(
         projects.insert().values(
             id=project_id,
+            user_id=user_id,
             title=req.title,
             description=req.description,
             status=req.status,
@@ -80,17 +84,28 @@ async def create_project(
 
 
 @router.get("/projects", response_model=list[ProjectResponse])
-async def list_projects(session: AsyncSession = Depends(get_session)):
+async def list_projects(
+    session: AsyncSession = Depends(get_session),
+    user_id: str = Depends(get_current_user),
+):
     result = await session.execute(
-        sa.select(projects).order_by(projects.c.priority, projects.c.updated_at.desc())
+        sa.select(projects)
+        .where(projects.c.user_id == user_id)
+        .order_by(projects.c.priority, projects.c.updated_at.desc())
     )
     return [await _build_response(session, row) for row in result.fetchall()]
 
 
 @router.get("/projects/{project_id}", response_model=ProjectResponse)
-async def get_project(project_id: str, session: AsyncSession = Depends(get_session)):
+async def get_project(
+    project_id: str,
+    session: AsyncSession = Depends(get_session),
+    user_id: str = Depends(get_current_user),
+):
     result = await session.execute(
-        sa.select(projects).where(projects.c.id == project_id)
+        sa.select(projects).where(
+            projects.c.id == project_id, projects.c.user_id == user_id
+        )
     )
     row = result.fetchone()
     if not row:
@@ -103,6 +118,7 @@ async def update_project(
     project_id: str,
     req: ProjectUpdateRequest,
     session: AsyncSession = Depends(get_session),
+    user_id: str = Depends(get_current_user),
 ):
     updates: dict = {"updated_at": datetime.now(timezone.utc)}
     if req.title is not None:
@@ -115,12 +131,16 @@ async def update_project(
         updates["priority"] = req.priority
 
     await session.execute(
-        projects.update().where(projects.c.id == project_id).values(**updates)
+        projects.update()
+        .where(projects.c.id == project_id, projects.c.user_id == user_id)
+        .values(**updates)
     )
     await session.commit()
 
     result = await session.execute(
-        sa.select(projects).where(projects.c.id == project_id)
+        sa.select(projects).where(
+            projects.c.id == project_id, projects.c.user_id == user_id
+        )
     )
     row = result.fetchone()
     if not row:
@@ -129,10 +149,14 @@ async def update_project(
 
 
 @router.delete("/projects/{project_id}")
-async def archive_project(project_id: str, session: AsyncSession = Depends(get_session)):
+async def archive_project(
+    project_id: str,
+    session: AsyncSession = Depends(get_session),
+    user_id: str = Depends(get_current_user),
+):
     await session.execute(
         projects.update()
-        .where(projects.c.id == project_id)
+        .where(projects.c.id == project_id, projects.c.user_id == user_id)
         .values(status="archived", updated_at=datetime.now(timezone.utc))
     )
     await session.commit()
@@ -144,12 +168,14 @@ async def add_note(
     project_id: str,
     req: ProjectNoteRequest,
     session: AsyncSession = Depends(get_session),
+    user_id: str = Depends(get_current_user),
 ):
     note_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
     await session.execute(
         project_notes.insert().values(
             id=note_id,
+            user_id=user_id,
             project_id=project_id,
             content=req.content,
             note_type=req.note_type,
@@ -158,7 +184,7 @@ async def add_note(
     )
     await session.execute(
         projects.update()
-        .where(projects.c.id == project_id)
+        .where(projects.c.id == project_id, projects.c.user_id == user_id)
         .values(updated_at=now)
     )
     await session.commit()
@@ -173,9 +199,12 @@ async def link_to_project(
     project_id: str,
     req: ProjectLinkRequest,
     session: AsyncSession = Depends(get_session),
+    user_id: str = Depends(get_current_user),
 ):
     result = await session.execute(
-        sa.select(projects).where(projects.c.id == project_id)
+        sa.select(projects).where(
+            projects.c.id == project_id, projects.c.user_id == user_id
+        )
     )
     row = result.fetchone()
     if not row:
@@ -189,7 +218,7 @@ async def link_to_project(
             ids.append(req.link_id)
         await session.execute(
             projects.update()
-            .where(projects.c.id == project_id)
+            .where(projects.c.id == project_id, projects.c.user_id == user_id)
             .values(plan_ids_json=json.dumps(ids), updated_at=now)
         )
     elif req.link_type == "reference":
@@ -198,7 +227,7 @@ async def link_to_project(
             ids.append(req.link_id)
         await session.execute(
             projects.update()
-            .where(projects.c.id == project_id)
+            .where(projects.c.id == project_id, projects.c.user_id == user_id)
             .values(reference_ids_json=json.dumps(ids), updated_at=now)
         )
     else:

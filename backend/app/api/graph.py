@@ -5,6 +5,7 @@ import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth import get_current_user
 from app.db.database import get_session, mind_nodes, node_connections, skill_nodes, skill_edges
 from app.models.graph import (
     MindNodeCreate, MindNodeResponse,
@@ -17,12 +18,15 @@ router = APIRouter(tags=["graph"])
 
 
 @router.get("/graph", response_model=GraphResponse)
-async def get_graph(session: AsyncSession = Depends(get_session)):
+async def get_graph(
+    session: AsyncSession = Depends(get_session),
+    user_id: str = Depends(get_current_user),
+):
     nodes_result = await session.execute(
         sa.select(
             mind_nodes.c.id, mind_nodes.c.text, mind_nodes.c.category,
             mind_nodes.c.color, mind_nodes.c.source, mind_nodes.c.created_at
-        )
+        ).where(mind_nodes.c.user_id == user_id)
     )
     nodes_data = [dict(r._mapping) for r in nodes_result.fetchall()]
 
@@ -32,7 +36,7 @@ async def get_graph(session: AsyncSession = Depends(get_session)):
             node_connections.c.target_id, node_connections.c.strength,
             node_connections.c.reason, node_connections.c.kind,
             node_connections.c.created_at
-        )
+        ).where(node_connections.c.user_id == user_id)
     )
     edges_data = [dict(r._mapping) for r in edges_result.fetchall()]
 
@@ -40,11 +44,16 @@ async def get_graph(session: AsyncSession = Depends(get_session)):
 
 
 @router.post("/graph/nodes", response_model=MindNodeResponse)
-async def create_node(node: MindNodeCreate, session: AsyncSession = Depends(get_session)):
+async def create_node(
+    node: MindNodeCreate,
+    session: AsyncSession = Depends(get_session),
+    user_id: str = Depends(get_current_user),
+):
     node_id = f"mn_{uuid.uuid4().hex[:8]}"
     await session.execute(
         sa.insert(mind_nodes).values(
             id=node_id,
+            user_id=user_id,
             text=node.text,
             category=node.category,
             color=node.color,
@@ -52,26 +61,38 @@ async def create_node(node: MindNodeCreate, session: AsyncSession = Depends(get_
         )
     )
     await session.commit()
-    res = await session.execute(sa.select(mind_nodes).where(mind_nodes.c.id == node_id))
+    res = await session.execute(
+        sa.select(mind_nodes).where(mind_nodes.c.id == node_id)
+    )
     created = res.first()
     return dict(created._mapping)
 
 
 @router.post("/graph/connect", response_model=NodeConnectionResponse)
-async def connect_nodes(conn: NodeConnectionCreate, session: AsyncSession = Depends(get_session)):
+async def connect_nodes(
+    conn: NodeConnectionCreate,
+    session: AsyncSession = Depends(get_session),
+    user_id: str = Depends(get_current_user),
+):
     existing = await session.execute(
         sa.select(node_connections.c.id).where(
-            ((node_connections.c.source_id == conn.source_id) & (node_connections.c.target_id == conn.target_id)) |
-            ((node_connections.c.source_id == conn.target_id) & (node_connections.c.target_id == conn.source_id))
+            node_connections.c.user_id == user_id,
+            (
+                ((node_connections.c.source_id == conn.source_id) & (node_connections.c.target_id == conn.target_id)) |
+                ((node_connections.c.source_id == conn.target_id) & (node_connections.c.target_id == conn.source_id))
+            ),
         )
     )
     if existing.first():
         raise HTTPException(status_code=409, detail="Edge already exists between these nodes.")
 
-    # Fetch node texts to generate a reason
     node_texts: dict[str, str] = {}
     for nid in (conn.source_id, conn.target_id):
-        row = await session.execute(sa.select(mind_nodes.c.text).where(mind_nodes.c.id == nid))
+        row = await session.execute(
+            sa.select(mind_nodes.c.text).where(
+                mind_nodes.c.id == nid, mind_nodes.c.user_id == user_id
+            )
+        )
         r = row.first()
         if r:
             node_texts[nid] = r[0]
@@ -86,6 +107,7 @@ async def connect_nodes(conn: NodeConnectionCreate, session: AsyncSession = Depe
     await session.execute(
         sa.insert(node_connections).values(
             id=edge_id,
+            user_id=user_id,
             source_id=conn.source_id,
             target_id=conn.target_id,
             strength=conn.strength,
@@ -106,20 +128,29 @@ async def connect_nodes(conn: NodeConnectionCreate, session: AsyncSession = Depe
 
 
 @router.post("/graph/sync")
-async def sync_graph(session: AsyncSession = Depends(get_session)):
+async def sync_graph(
+    session: AsyncSession = Depends(get_session),
+    user_id: str = Depends(get_current_user),
+):
     from app.services.mind_graph_sync import sync_mind_graph
-    result = await sync_mind_graph(session)
+    result = await sync_mind_graph(session, user_id)
     return result
 
 
 @router.post("/graph/seed")
-async def seed_graph_from_dna(session: AsyncSession = Depends(get_session)):
-    res = await session.execute(sa.select(mind_nodes.c.id).limit(1))
+async def seed_graph_from_dna(
+    session: AsyncSession = Depends(get_session),
+    user_id: str = Depends(get_current_user),
+):
+    res = await session.execute(
+        sa.select(mind_nodes.c.id).where(mind_nodes.c.user_id == user_id).limit(1)
+    )
     if res.first():
         return {"seeded": False, "message": "Graph already has nodes."}
 
     top_skills_res = await session.execute(
         sa.select(skill_nodes.c.id, skill_nodes.c.name, skill_nodes.c.category)
+        .where(skill_nodes.c.user_id == user_id)
         .order_by(skill_nodes.c.level.desc())
         .limit(10)
     )
@@ -134,6 +165,7 @@ async def seed_graph_from_dna(session: AsyncSession = Depends(get_session)):
         await session.execute(
             sa.insert(mind_nodes).values(
                 id=node_id,
+                user_id=user_id,
                 text=row.name,
                 category=row.category or "learning",
                 color="#82aaff",
@@ -148,8 +180,9 @@ async def seed_graph_from_dna(session: AsyncSession = Depends(get_session)):
             skill_edges.c.source_id, skill_edges.c.target_id,
             skill_edges.c.strength, skill_edges.c.reason
         ).where(
-            skill_edges.c.source_id.in_(list(id_map.keys())) &
-            skill_edges.c.target_id.in_(list(id_map.keys()))
+            skill_edges.c.user_id == user_id,
+            skill_edges.c.source_id.in_(list(id_map.keys())),
+            skill_edges.c.target_id.in_(list(id_map.keys())),
         )
     )
 
@@ -162,6 +195,7 @@ async def seed_graph_from_dna(session: AsyncSession = Depends(get_session)):
         await session.execute(
             sa.insert(node_connections).values(
                 id=edge_id,
+                user_id=user_id,
                 source_id=id_map[erow.source_id],
                 target_id=id_map[erow.target_id],
                 strength=erow.strength,
@@ -180,21 +214,28 @@ async def seed_graph_from_dna(session: AsyncSession = Depends(get_session)):
 
 
 @router.post("/graph/reasons/backfill")
-async def backfill_edge_reasons(session: AsyncSession = Depends(get_session)):
+async def backfill_edge_reasons(
+    session: AsyncSession = Depends(get_session),
+    user_id: str = Depends(get_current_user),
+):
     """Generate reasoning for all edges that currently have reason=NULL."""
     missing_res = await session.execute(
         sa.select(
             node_connections.c.id,
             node_connections.c.source_id,
             node_connections.c.target_id,
-        ).where(node_connections.c.reason.is_(None))
+        ).where(
+            node_connections.c.user_id == user_id,
+            node_connections.c.reason.is_(None),
+        )
     )
     missing = missing_res.fetchall()
     if not missing:
         return {"updated": 0, "skipped": 0}
 
-    # Fetch all node texts in one query
-    node_res = await session.execute(sa.select(mind_nodes.c.id, mind_nodes.c.text))
+    node_res = await session.execute(
+        sa.select(mind_nodes.c.id, mind_nodes.c.text).where(mind_nodes.c.user_id == user_id)
+    )
     text_map: dict[str, str] = {row.id: row.text for row in node_res.fetchall()}
 
     updated = 0
@@ -207,7 +248,6 @@ async def backfill_edge_reasons(session: AsyncSession = Depends(get_session)):
             return edge_id, None
         return edge_id, await generate_edge_reason(a, b)
 
-    # Process in chunks of 5 to bound concurrency
     chunk_size = 5
     for i in range(0, len(missing), chunk_size):
         chunk = missing[i:i + chunk_size]

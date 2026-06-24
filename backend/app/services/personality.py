@@ -32,16 +32,17 @@ Your rules:
 You are NOT a productivity bot. You are a creative partner who sees reality sideways."""
 
 
-async def _fetch_active_projects() -> list[dict]:
-    """Get active/blocked/idea projects for context injection."""
+async def _fetch_active_projects(user_id: str) -> list[dict]:
     async with async_session() as session:
         result = await session.execute(
             sa.select(projects)
-            .where(projects.c.status.in_(["idea", "active", "blocked"]))
+            .where(
+                projects.c.user_id == user_id,
+                projects.c.status.in_(["idea", "active", "blocked"]),
+            )
             .order_by(projects.c.priority, projects.c.updated_at.desc())
             .limit(5)
         )
-        rows = result.fetchall()
         return [
             {
                 "title": r.title,
@@ -51,20 +52,21 @@ async def _fetch_active_projects() -> list[dict]:
                 "plan_count": len(json.loads(r.plan_ids_json or "[]")),
                 "ref_count": len(json.loads(r.reference_ids_json or "[]")),
             }
-            for r in rows
+            for r in result.fetchall()
         ]
 
 
-async def _fetch_top_skills(limit: int = 5) -> list[dict]:
-    """Get the user's strongest skills by XP."""
+async def _fetch_top_skills(user_id: str, limit: int = 5) -> list[dict]:
     async with async_session() as session:
         result = await session.execute(
-            sa.select(skill_nodes).order_by(skill_nodes.c.xp.desc()).limit(limit)
+            sa.select(skill_nodes)
+            .where(skill_nodes.c.user_id == user_id)
+            .order_by(skill_nodes.c.xp.desc())
+            .limit(limit)
         )
-        rows = result.fetchall()
         return [
             {"name": r.name, "category": r.category, "level": r.level}
-            for r in rows
+            for r in result.fetchall()
         ]
 
 
@@ -92,10 +94,7 @@ def _format_project_context(active_projects: list[dict]) -> str:
 def _format_skill_context(top_skills: list[dict]) -> str:
     if not top_skills:
         return ""
-    skill_list = ", ".join(
-        f'{s["name"]} (L{s["level"]})'
-        for s in top_skills
-    )
+    skill_list = ", ".join(f'{s["name"]} (L{s["level"]})' for s in top_skills)
     return (
         f"\n\n--- USER'S SKILL PROFILE ---\n"
         f"Top skills: {skill_list}\n"
@@ -105,13 +104,12 @@ def _format_skill_context(top_skills: list[dict]) -> str:
 
 
 async def build_messages(
-    history: list[dict], user_message: str, rag_context: str = ""
+    history: list[dict], user_message: str, user_id: str, rag_context: str = ""
 ) -> list[dict]:
-    """Build the full message list for the OpenAI API call."""
     system_content = SYSTEM_PROMPT
 
-    active_projects = await _fetch_active_projects()
-    top_skills = await _fetch_top_skills()
+    active_projects = await _fetch_active_projects(user_id)
+    top_skills = await _fetch_top_skills(user_id)
 
     project_ctx = _format_project_context(active_projects)
     skill_ctx = _format_skill_context(top_skills)
@@ -123,8 +121,8 @@ async def build_messages(
     if rag_context:
         system_content += rag_context
 
-    messages = [{"role": "system", "content": system_content}]
+    msgs = [{"role": "system", "content": system_content}]
     for msg in history:
-        messages.append({"role": msg["role"], "content": msg["content"]})
-    messages.append({"role": "user", "content": user_message})
-    return messages
+        msgs.append({"role": msg["role"], "content": msg["content"]})
+    msgs.append({"role": "user", "content": user_message})
+    return msgs

@@ -8,17 +8,20 @@ from app.db.database import skill_nodes, skill_edges, mind_nodes, node_connectio
 from app.services.edge_reasoning import generate_edge_reason
 
 
-async def sync_mind_graph(session: AsyncSession) -> dict:
+async def sync_mind_graph(session: AsyncSession, user_id: str) -> dict:
     """Mirror skill nodes/edges into the mind graph without creating duplicates."""
 
     skill_res = await session.execute(
         sa.select(skill_nodes.c.id, skill_nodes.c.name, skill_nodes.c.category)
+        .where(skill_nodes.c.user_id == user_id)
     )
     skills = skill_res.fetchall()
     if not skills:
         return {"added_nodes": 0, "added_edges": 0}
 
-    mind_res = await session.execute(sa.select(mind_nodes.c.id, mind_nodes.c.text))
+    mind_res = await session.execute(
+        sa.select(mind_nodes.c.id, mind_nodes.c.text).where(mind_nodes.c.user_id == user_id)
+    )
     text_to_mind_id: dict[str, str] = {row.text: row.id for row in mind_res.fetchall()}
 
     skill_name_to_mind_id: dict[str, str] = {}
@@ -31,6 +34,7 @@ async def sync_mind_graph(session: AsyncSession) -> dict:
             await session.execute(
                 sa.insert(mind_nodes).values(
                     id=node_id,
+                    user_id=user_id,
                     text=skill.name,
                     category=skill.category or "learning",
                     color="#82aaff",
@@ -49,11 +53,12 @@ async def sync_mind_graph(session: AsyncSession) -> dict:
             skill_edges.c.target_id,
             skill_edges.c.strength,
             skill_edges.c.reason,
-        )
+        ).where(skill_edges.c.user_id == user_id)
     )
 
     existing_edges_res = await session.execute(
         sa.select(node_connections.c.source_id, node_connections.c.target_id)
+        .where(node_connections.c.user_id == user_id)
     )
     existing_pairs: set[frozenset[str]] = {
         frozenset([row.source_id, row.target_id]) for row in existing_edges_res.fetchall()
@@ -78,6 +83,7 @@ async def sync_mind_graph(session: AsyncSession) -> dict:
         await session.execute(
             sa.insert(node_connections).values(
                 id=edge_id,
+                user_id=user_id,
                 source_id=src_mind,
                 target_id=tgt_mind,
                 strength=edge.strength,

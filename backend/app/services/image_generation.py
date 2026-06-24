@@ -18,8 +18,8 @@ def _build_image_prompt(user_brief: str, refs: list[dict]) -> str:
     return " // ".join(parts) if parts else "abstract creative inspiration"
 
 
-async def generate_inspiration(user_brief: str) -> dict:
-    refs = await retrieve_context(user_brief or "creative inspiration", n_results=3)
+async def generate_inspiration(user_brief: str, user_id: str) -> dict:
+    refs = await retrieve_context(user_brief or "creative inspiration", user_id, n_results=3)
     prompt = _build_image_prompt(user_brief, refs)
 
     result = await client.images.generate(

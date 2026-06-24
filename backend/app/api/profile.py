@@ -3,6 +3,7 @@ import sqlalchemy as sa
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth import get_current_user
 from app.db.database import get_session, references, messages, conversations
 from app.models.plan import CreativeDNAResponse
 from app.services.structured_output import analyze_creative_dna
@@ -11,9 +12,13 @@ router = APIRouter(tags=["profile"])
 
 
 @router.get("/profile/dna", response_model=CreativeDNAResponse)
-async def get_creative_dna(session: AsyncSession = Depends(get_session)):
+async def get_creative_dna(
+    session: AsyncSession = Depends(get_session),
+    user_id: str = Depends(get_current_user),
+):
     refs_result = await session.execute(
         sa.select(references.c.title, references.c.content, references.c.type)
+        .where(references.c.user_id == user_id)
         .order_by(references.c.created_at.desc())
     )
     ref_texts = [
@@ -22,6 +27,7 @@ async def get_creative_dna(session: AsyncSession = Depends(get_session)):
 
     msgs_result = await session.execute(
         sa.select(messages.c.role, messages.c.content)
+        .where(messages.c.user_id == user_id)
         .order_by(messages.c.created_at.desc())
         .limit(40)
     )
@@ -29,8 +35,16 @@ async def get_creative_dna(session: AsyncSession = Depends(get_session)):
         f"{row.role}: {row.content}" for row in msgs_result.fetchall()
     ]
 
-    total_refs = await session.execute(sa.select(sa.func.count()).select_from(references))
-    total_convos = await session.execute(sa.select(sa.func.count()).select_from(conversations))
+    total_refs = await session.execute(
+        sa.select(sa.func.count())
+        .select_from(references)
+        .where(references.c.user_id == user_id)
+    )
+    total_convos = await session.execute(
+        sa.select(sa.func.count())
+        .select_from(conversations)
+        .where(conversations.c.user_id == user_id)
+    )
 
     dna = await analyze_creative_dna(ref_texts, conversation_snippets)
 
