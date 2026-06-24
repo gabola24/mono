@@ -27,7 +27,7 @@ async def generate_edge_reason(
 
     try:
         resp = await _client.chat.completions.create(
-            model=settings.openai_reasoning_model,
+            model=settings.edge_reason_model,
             messages=[
                 {"role": "system", "content": _SYSTEM},
                 {"role": "user", "content": user_msg},

@@ -26,7 +26,7 @@ async def describe_image(image_path: str) -> str:
     image_b64 = base64.b64encode(path.read_bytes()).decode()
 
     response = await client.chat.completions.create(
-        model=settings.openai_model,
+        model=settings.vision_model,
         messages=[
             {
                 "role": "user",

@@ -23,7 +23,7 @@ async def generate_inspiration(user_brief: str) -> dict:
     prompt = _build_image_prompt(user_brief, refs)
 
     result = await client.images.generate(
-        model=settings.openai_image_model,
+        model=settings.image_model,
         prompt=prompt,
         size="1024x1024",
         n=1,

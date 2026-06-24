@@ -42,7 +42,7 @@ async def discover_skills(content: str, existing_nodes: list[str]) -> dict:
 
     try:
         response = await client.chat.completions.create(
-            model=settings.openai_model,
+            model=settings.discovery_model,
             response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": DISCOVERY_PROMPT},

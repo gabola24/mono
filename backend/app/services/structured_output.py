@@ -36,7 +36,7 @@ async def generate_plan(topic: str, context: str = "") -> dict:
         user_content += f"\n\nAdditional context from the user's creative references:\n{context}"
 
     response = await client.chat.completions.create(
-        model=settings.openai_model,
+        model=settings.plan_model,
         response_format={"type": "json_object"},
         messages=[
             {"role": "system", "content": PLAN_SYSTEM_PROMPT},
@@ -96,7 +96,7 @@ async def analyze_creative_dna(
         }
 
     response = await client.chat.completions.create(
-        model=settings.openai_model,
+        model=settings.dna_model,
         response_format={"type": "json_object"},
         messages=[
             {"role": "system", "content": DNA_SYSTEM_PROMPT},

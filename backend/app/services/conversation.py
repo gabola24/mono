@@ -1,4 +1,5 @@
 from __future__ import annotations
+import asyncio
 import uuid
 from datetime import datetime, timezone
 from collections.abc import AsyncGenerator
@@ -8,11 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from openai import AsyncOpenAI
 
 from app.config import settings
-from app.db.database import conversations, messages
+from app.db.database import conversations, messages, async_session
 from app.services.personality import build_messages
 from app.services.rag_pipeline import retrieve_context, format_context_for_prompt
 
 client = AsyncOpenAI(api_key=settings.openai_api_key)
+
+HISTORY_TURNS = 10  # keep last N user+assistant pairs to cap context cost
 
 
 async def get_or_create_conversation(session: AsyncSession, conversation_id: str | None) -> str:
@@ -33,9 +36,11 @@ async def fetch_history(session: AsyncSession, conversation_id: str) -> list[dic
     result = await session.execute(
         sa.select(messages.c.role, messages.c.content)
         .where(messages.c.conversation_id == conversation_id)
-        .order_by(messages.c.created_at)
+        .order_by(messages.c.created_at.desc())
+        .limit(HISTORY_TURNS * 2)
     )
-    return [{"role": row.role, "content": row.content} for row in result.fetchall()]
+    rows = list(reversed(result.fetchall()))
+    return [{"role": row.role, "content": row.content} for row in rows]
 
 
 async def save_message(session: AsyncSession, conversation_id: str, role: str, content: str):
@@ -81,7 +86,7 @@ async def stream_response(
 
     full_response = []
     stream = await client.chat.completions.create(
-        model=settings.openai_model,
+        model=settings.chat_model,
         messages=api_messages,
         stream=True,
         temperature=0.9,
@@ -97,11 +102,20 @@ async def stream_response(
     assistant_text = "".join(full_response)
     await save_message(session, conversation_id, "assistant", assistant_text)
 
+    combined = f"User: {user_message}\nAssistant: {assistant_text}"
+    asyncio.create_task(_background_analysis(combined))
+
+
+async def _background_analysis(combined: str) -> None:
+    """Run skill discovery + mind-graph sync in a background task with its own session."""
     from app.services.skill_discovery import process_skill_discovery
     from app.services.mind_graph_sync import sync_mind_graph
-    combined = f"User: {user_message}\nAssistant: {assistant_text}"
-    await process_skill_discovery(session, combined)
-    await sync_mind_graph(session)
+    try:
+        async with async_session() as session:
+            await process_skill_discovery(session, combined)
+            await sync_mind_graph(session)
+    except Exception:
+        pass  # background task — never crash the caller
 
 
 async def list_conversations(session: AsyncSession) -> list[dict]:
