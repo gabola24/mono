@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     # Daily OpenAI spend cap in USD across all users (0 = no cap)
     openai_daily_budget_usd: float = 5.0
 
+    # Clerk auth — leave empty to run in single-tenant dev mode (SYSTEM_USER_ID)
+    clerk_jwks_url: str = ""
+    clerk_webhook_secret: str = ""  # whsec_... from Clerk dashboard
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 

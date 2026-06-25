@@ -18,6 +18,7 @@ from app.api.companion import router as companion_router
 from app.api.stats import router as stats_router
 from app.api.graph import router as graph_router
 from app.api.link_game import router as link_game_router
+from app.api.webhooks import router as webhooks_router
 from app.config import settings
 
 UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
@@ -52,4 +53,5 @@ app.include_router(companion_router, prefix="/api")
 app.include_router(stats_router, prefix="/api")
 app.include_router(graph_router, prefix="/api")
 app.include_router(link_game_router, prefix="/api")
+app.include_router(webhooks_router, prefix="/api")
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")

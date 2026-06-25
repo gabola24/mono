@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from 'react'
 import { useReferenceStore } from '../stores/referenceStore'
 import { useCompanionStore } from '../stores/companionStore'
+import { apiFetch } from '../lib/api'
 
 export function useReferences() {
   const {
@@ -18,8 +19,8 @@ export function useReferences() {
 
   const fetchReferences = useCallback(async () => {
     const [refsRes, statsRes] = await Promise.all([
-      fetch('/api/references'),
-      fetch('/api/references/stats'),
+      apiFetch('/api/references'),
+      apiFetch('/api/references/stats'),
     ])
     if (refsRes.ok) setReferences(await refsRes.json())
     if (statsRes.ok) setStats(await statsRes.json())
@@ -30,9 +31,8 @@ export function useReferences() {
       setUploading(true)
       setMood('eating')
       try {
-        const res = await fetch('/api/references/text', {
+        const res = await apiFetch('/api/references/text', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ content, title: title || '' }),
         })
         if (res.ok) {
@@ -41,7 +41,7 @@ export function useReferences() {
           addXp(15)
           setMood('celebrating')
           setTimeout(() => setMood('idle'), 1500)
-          const statsRes = await fetch('/api/references/stats')
+          const statsRes = await apiFetch('/api/references/stats')
           if (statsRes.ok) setStats(await statsRes.json())
         }
       } finally {
@@ -59,7 +59,7 @@ export function useReferences() {
         const form = new FormData()
         form.append('file', file)
         if (title) form.append('title', title)
-        const res = await fetch('/api/references/image', {
+        const res = await apiFetch('/api/references/image', {
           method: 'POST',
           body: form,
         })
@@ -69,7 +69,7 @@ export function useReferences() {
           addXp(20)
           setMood('celebrating')
           setTimeout(() => setMood('idle'), 1500)
-          const statsRes = await fetch('/api/references/stats')
+          const statsRes = await apiFetch('/api/references/stats')
           if (statsRes.ok) setStats(await statsRes.json())
         }
       } finally {
@@ -81,10 +81,10 @@ export function useReferences() {
 
   const deleteReference = useCallback(
     async (id: string) => {
-      await fetch(`/api/references/${id}`, { method: 'DELETE' })
+      await apiFetch(`/api/references/${id}`, { method: 'DELETE' })
       removeReference(id)
       loseXp(5)
-      const statsRes = await fetch('/api/references/stats')
+      const statsRes = await apiFetch('/api/references/stats')
       if (statsRes.ok) setStats(await statsRes.json())
     },
     [removeReference, setStats, loseXp]

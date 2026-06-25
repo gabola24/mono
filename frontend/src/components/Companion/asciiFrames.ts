@@ -33,7 +33,7 @@ function categorizeSkill(name: string): string | null {
   return null
 }
 
-function applySkillDecorations(frame: string, topSkills: string[]): string {
+export function applySkillDecorations(frame: string, topSkills: string[]): string {
   if (topSkills.length === 0) return frame
 
   const categories = topSkills

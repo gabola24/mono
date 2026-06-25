@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { useChatStore } from '../stores/chatStore'
 import { useCompanionStore } from '../stores/companionStore'
 import { useSkillTree } from './useSkillTree'
+import { apiFetch } from '../lib/api'
 
 export function useChat(onAfterMessage?: () => void) {
   const {
@@ -39,9 +40,8 @@ export function useChat(onAfterMessage?: () => void) {
       addMessage(assistantMsg)
 
       try {
-        const res = await fetch('/api/chat', {
+        const res = await apiFetch('/api/chat', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             content,
             conversation_id: conversationId,
@@ -67,16 +67,22 @@ export function useChat(onAfterMessage?: () => void) {
 
           for (const line of lines) {
             if (!line.startsWith('data: ')) continue
-            const data = JSON.parse(line.slice(6))
+            const data = JSON.parse(line.slice(6)) as {
+              type: string
+              value?: string
+              url?: string
+              prompt?: string
+              ref_ids?: string[]
+            }
 
             if (data.type === 'conversation_id') {
-              setConversationId(data.value)
+              setConversationId(data.value ?? '')
             } else if (data.type === 'token') {
               if (!started) {
                 setMood('speaking')
                 started = true
               }
-              appendToLast(data.value)
+              appendToLast(data.value ?? '')
             } else if (data.type === 'image_pending') {
               setMood('thinking')
               updateLast((msg) => ({ ...msg, pending: 'image' as const }))
@@ -84,7 +90,7 @@ export function useChat(onAfterMessage?: () => void) {
               updateLast((msg) => ({
                 ...msg,
                 content: data.prompt ?? '',
-                image: { url: data.url, prompt: data.prompt, refIds: data.ref_ids },
+                image: { url: data.url ?? '', prompt: data.prompt ?? '', refIds: data.ref_ids ?? [] },
                 pending: undefined,
               }))
               setMood('celebrating')
@@ -94,8 +100,6 @@ export function useChat(onAfterMessage?: () => void) {
         }
 
         addXp(10)
-
-        // Refresh skill tree and mind graph from backend after chat stream closes.
         fetchTree()
         fetchSummary()
         onAfterMessage?.()

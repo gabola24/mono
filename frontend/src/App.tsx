@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useAuth, SignInButton, UserButton } from '@clerk/clerk-react'
 import PipWindow from './components/Companion/PipWindow'
 import ChatInterface from './components/Chat/ChatInterface'
 import TrustMeter from './components/Gamification/TrustMeter'
@@ -16,33 +17,32 @@ import { useReferences } from './hooks/useReferences'
 import { useSkillTree } from './hooks/useSkillTree'
 import { useMindGraph } from './hooks/useMindGraph'
 import { useCompanionStore } from './stores/companionStore'
-import { useAuthStore } from './stores/authStore'
 import TestPanel from './components/TestPanel'
+import { registerTokenGetter, apiFetch } from './lib/api'
 
-export default function App() {
+const CLERK_ENABLED = Boolean(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY)
+
+// ─── Main app content ────────────────────────────────────────────────────────
+
+function AppContent() {
   const [testPanelOpen, setTestPanelOpen] = useState(false)
-  const { isLoggedIn, login } = useAuthStore()
-  const [loginInput, setLoginInput] = useState('')
   const [feedOpen, setFeedOpen] = useState(false)
   const [workspaceOpen, setWorkspaceOpen] = useState(false)
   const [garageOpen, setGarageOpen] = useState(false)
   const [graphOpen, setGraphOpen] = useState(false)
   const [gamesOpen, setGamesOpen] = useState(false)
   const { stats } = useReferences()
-  const {
-    edges, topSkills,
-    pendingBadge, dismissBadge,
-  } = useSkillTree()
+  const { edges, topSkills, pendingBadge, dismissBadge } = useSkillTree()
   const { nodes: mindNodes, edges: mindEdges, fetchGraph } = useMindGraph()
 
   const [statsPanelOpen, setStatsPanelOpen] = useState(false)
   const [dailyStatsHistory, setDailyStatsHistory] = useState<DailyStat[]>([])
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/stats/history')
+    apiFetch('/api/stats/history')
       .then(res => res.json())
-      .then(data => {
-        if (data && data.stats) setDailyStatsHistory(data.stats)
+      .then((data: { stats?: DailyStat[] }) => {
+        if (data?.stats) setDailyStatsHistory(data.stats)
       })
       .catch(console.error)
   }, [])
@@ -53,24 +53,22 @@ export default function App() {
     checkDailyDecay()
   }, [checkDailyDecay])
 
-  const handleCheckIn = async (stats: any) => {
+  const handleCheckIn = async (stat: Record<string, number>) => {
     try {
-      const res = await fetch('http://localhost:8000/api/stats/checkin', {
+      const res = await apiFetch('/api/stats/checkin', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(stats)
+        body: JSON.stringify(stat),
       })
-      const newStat = await res.json()
+      const newStat = await res.json() as DailyStat & { date: string }
       setDailyStatsHistory(prev => {
-        const filtered = prev.filter((s: any) => s.date !== newStat.date)
-        return [newStat, ...filtered] as any
+        const filtered = prev.filter(s => s.date !== newStat.date)
+        return [newStat, ...filtered]
       })
 
-      // Mono mood integration based on check-in
-      if (stats.energy >= 80 && stats.mood >= 80) {
+      if (stat.energy >= 80 && stat.mood >= 80) {
         setMood('celebrating')
         setTimeout(() => setMood('idle'), 5000)
-      } else if (stats.energy < 40 || stats.mood < 40) {
+      } else if (stat.energy < 40 || stat.mood < 40) {
         setMood('thinking')
       } else {
         setMood('idle')
@@ -78,27 +76,6 @@ export default function App() {
     } catch (e) {
       console.error(e)
     }
-  }
-
-  if (!isLoggedIn) {
-    return (
-      <div className="h-screen w-screen flex items-center justify-center bg-muse-bg">
-        <form
-          className="p-8 bg-muse-surface border-2 border-muse-border rounded flex flex-col items-center gap-4 shadow-2xl scale-125"
-          onSubmit={(e) => { e.preventDefault(); if (loginInput.trim()) login(loginInput.trim()) }}
-        >
-          <div className="pixel-text text-xl text-pixel-pink mb-4" style={{ textShadow: '0 0 8px var(--color-muse-accent-glow)' }}>INITIALIZE SESSION</div>
-          <input
-            className="panel-input text-center w-64 uppercase"
-            placeholder="ENTER USERNAME"
-            value={loginInput}
-            onChange={(e) => setLoginInput(e.target.value)}
-            autoFocus
-          />
-          <button type="submit" className="pixel-btn w-full">LOG IN</button>
-        </form>
-      </div>
-    )
   }
 
   return (
@@ -146,6 +123,7 @@ export default function App() {
             <button onClick={() => setGamesOpen(true)} className="pixel-btn text-pixel-gold border-pixel-gold ml-2">
               ARCADE
             </button>
+            {CLERK_ENABLED && <UserButton />}
           </div>
         </div>
       </header>
@@ -193,7 +171,6 @@ export default function App() {
         onAfterPlay={fetchGraph}
       />
 
-      {/* Mind Graph Modal */}
       <MindGraph
         isOpen={graphOpen}
         onClose={() => setGraphOpen(false)}
@@ -201,10 +178,50 @@ export default function App() {
         edges={mindEdges}
       />
 
-      {/* Badge Toast */}
       <BadgeToast badge={pendingBadge} onDismiss={dismissBadge} />
 
       <TestPanel isOpen={testPanelOpen} onClose={() => setTestPanelOpen(false)} />
     </div>
   )
+}
+
+// ─── Clerk auth wrapper (only rendered when CLERK_ENABLED) ───────────────────
+
+function ClerkWrapper() {
+  const { isSignedIn, getToken } = useAuth()
+
+  useEffect(() => {
+    registerTokenGetter(getToken)
+  }, [getToken])
+
+  if (!isSignedIn) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-muse-bg">
+        <div
+          className="p-8 bg-muse-surface border-2 border-muse-border rounded flex flex-col items-center gap-4 shadow-2xl scale-125"
+        >
+          <div
+            className="pixel-text text-xl text-pixel-pink mb-4"
+            style={{ textShadow: '0 0 8px var(--color-muse-accent-glow)' }}
+          >
+            INITIALIZE SESSION
+          </div>
+          <SignInButton mode="modal">
+            <button className="pixel-btn w-64">LOG IN</button>
+          </SignInButton>
+        </div>
+      </div>
+    )
+  }
+
+  return <AppContent />
+}
+
+// ─── Root export ─────────────────────────────────────────────────────────────
+
+export default function App() {
+  if (CLERK_ENABLED) {
+    return <ClerkWrapper />
+  }
+  return <AppContent />
 }

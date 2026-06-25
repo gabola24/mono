@@ -1,16 +1,28 @@
-import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useCompanionStore } from '../stores/companionStore'
-import { useAuthStore } from '../stores/authStore'
+import { useClerk } from '@clerk/clerk-react'
 
 interface TestPanelProps {
     isOpen: boolean
     onClose: () => void
 }
 
+const IS_CLERK = Boolean(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY)
+
+function SignOutButton() {
+    const { signOut } = useClerk()
+    return (
+        <button
+            className="pixel-btn text-pixel-gold w-full border-pixel-gold"
+            onClick={() => signOut()}
+        >
+            Log Out User
+        </button>
+    )
+}
+
 export default function TestPanel({ isOpen, onClose }: TestPanelProps) {
     const { addXp, loseXp } = useCompanionStore()
-    const { logout } = useAuthStore()
 
     if (!isOpen) return null
 
@@ -85,12 +97,7 @@ export default function TestPanel({ isOpen, onClose }: TestPanelProps) {
                         >
                             Nuke State & Reload
                         </button>
-                        <button
-                            className="pixel-btn text-pixel-gold w-full border-pixel-gold"
-                            onClick={logout}
-                        >
-                            Log Out User
-                        </button>
+                        {IS_CLERK && <SignOutButton />}
                     </div>
                 </div>
             </motion.div>

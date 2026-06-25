@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
+import { apiFetch } from '../lib/api'
 
 export interface MindNode {
     id: string
@@ -24,14 +25,14 @@ export function useMindGraph() {
 
     const fetchGraph = useCallback(async () => {
         try {
-            const res = await fetch('/api/graph')
+            const res = await apiFetch('/api/graph')
             if (res.ok) {
-                const data = await res.json()
+                const data = await res.json() as { nodes: MindNode[]; edges: MindEdge[] }
                 if (data.nodes.length === 0) {
-                    await fetch('/api/graph/seed', { method: 'POST' })
-                    const retryRes = await fetch('/api/graph')
+                    await apiFetch('/api/graph/seed', { method: 'POST' })
+                    const retryRes = await apiFetch('/api/graph')
                     if (retryRes.ok) {
-                        const retryData = await retryRes.json()
+                        const retryData = await retryRes.json() as { nodes: MindNode[]; edges: MindEdge[] }
                         setNodes(retryData.nodes)
                         setEdges(retryData.edges)
                     }

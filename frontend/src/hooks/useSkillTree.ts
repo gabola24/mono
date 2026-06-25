@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from 'react'
 import { useSkillTreeStore } from '../stores/skillTreeStore'
+import { apiFetch } from '../lib/api'
 
 export function useSkillTree() {
   const {
@@ -9,7 +10,7 @@ export function useSkillTree() {
   } = useSkillTreeStore()
 
   const fetchTree = useCallback(async () => {
-    const res = await fetch('/api/skills/tree')
+    const res = await apiFetch('/api/skills/tree')
     if (res.ok) {
       const data = await res.json()
       setTree(data.nodes, data.edges, data.badges)
@@ -17,7 +18,7 @@ export function useSkillTree() {
   }, [setTree])
 
   const fetchSummary = useCallback(async () => {
-    const res = await fetch('/api/skills/summary')
+    const res = await apiFetch('/api/skills/summary')
     if (res.ok) {
       const data = await res.json()
       setSummary(data.top_skills, data.total_nodes, data.total_badges)
@@ -25,7 +26,7 @@ export function useSkillTree() {
   }, [setSummary])
 
   const reanalyze = useCallback(async () => {
-    const res = await fetch('/api/skills/reanalyze', { method: 'POST' })
+    const res = await apiFetch('/api/skills/reanalyze', { method: 'POST' })
     if (res.ok) {
       const data = await res.json()
       if (data.new_badges?.length) {
