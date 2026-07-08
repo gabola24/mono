@@ -1,0 +1,18 @@
+{
+  "name": "Zukuri",
+  "short_name": "Zukuri",
+  "description": "Your AI creative companion",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F1EFE9",
+  "theme_color": "#5e7a70",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ]
+}

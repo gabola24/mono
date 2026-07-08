@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useCompanionStore } from '../../stores/companionStore'
 import { SPRITES } from './pixelSprites'
+import { apiFetch } from '../../lib/api'
 
 interface OnboardingFlowProps {
     onComplete: () => void
@@ -14,13 +15,13 @@ function SpriteImage({ svg, size = 120, className = "" }: { svg: string; size?: 
 
 export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     const [step, setStep] = useState(0)
-    const { setMood } = useCompanionStore()
+    const [nameInput, setNameInput] = useState('Mono')
+    const { setMood, setName, addXp } = useCompanionStore()
 
     useEffect(() => {
-        // Companion is "sleeping" until step 2
         if (step < 2) {
             setMood('idle')
-        } else if (step === 2) {
+        } else if (step === 3) {
             setMood('celebrating')
         } else {
             setMood('idle')
@@ -29,7 +30,23 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
     const nextStep = () => setStep(s => s + 1)
     const sleepSprite = SPRITES.hatchling.idle[0]
-    const awakeSprite = SPRITES.hatchling.idle[0] // or any frame representing wake
+    const awakeSprite = SPRITES.hatchling.idle[0]
+
+    const handleEnter = async () => {
+        const finalName = nameInput.trim() || 'Mono'
+        setName(finalName)
+        addXp(20)
+        try {
+            await apiFetch('/api/me', {
+                method: 'PATCH',
+                body: JSON.stringify({ onboarded: true }),
+            })
+        } catch {
+            // fail open — localStorage fallback
+        }
+        localStorage.setItem('zukuri_onboarded', 'true')
+        onComplete()
+    }
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#05040a]">
@@ -83,21 +100,50 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                         animate={{ opacity: 1, transition: { duration: 0.5 } }}
                         exit={{ opacity: 0, transition: { duration: 0.2 } }}
                     >
+                        <div className="mb-6">
+                            <SpriteImage svg={awakeSprite} className="drop-shadow-[0_0_15px_#ffea94]" />
+                        </div>
+                        <p className="pixel-text text-[12px] text-white tracking-widest mb-2">
+                            Connection established.
+                        </p>
+                        <p className="pixel-text text-[10px] text-muse-text-dim mb-6">
+                            What should I call myself?
+                        </p>
+                        <input
+                            type="text"
+                            value={nameInput}
+                            onChange={e => setNameInput(e.target.value)}
+                            maxLength={16}
+                            className="bg-muse-surface border border-muse-border text-muse-text pixel-text text-[12px] text-center px-4 py-2 mb-6 w-40 outline-none focus:border-pixel-gold"
+                            placeholder="Mono"
+                            onKeyDown={e => { if (e.key === 'Enter') nextStep() }}
+                        />
+                        <button onClick={nextStep} className="pixel-btn px-6 py-2 text-[10px]">
+                            SET NAME
+                        </button>
+                    </motion.div>
+                )}
+
+                {step === 3 && (
+                    <motion.div
+                        key="3"
+                        className="text-center flex flex-col items-center"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1, transition: { duration: 0.5 } }}
+                        exit={{ opacity: 0, transition: { duration: 0.2 } }}
+                    >
                         <div className="mb-4">
                             <SpriteImage svg={awakeSprite} className="drop-shadow-[0_0_15px_#ffea94]" />
                         </div>
                         <p className="pixel-text text-[14px] text-white tracking-widest mb-4">
-                            I am MONO.
+                            I am {nameInput.trim() || 'Mono'}.
                         </p>
                         <p className="pixel-text text-[10px] text-muse-text-dim mb-8 max-w-sm leading-relaxed">
                             We are now linked. <br /><br />
                             Together, we will build your specific <b>ZUKURI</b>.
                             Checking in, writing notes, and exploring the web will help me grow.
                         </p>
-                        <button onClick={() => {
-                            localStorage.setItem('zukuri_onboarded', 'true')
-                            onComplete()
-                        }} className="pixel-btn px-6 py-2">
+                        <button onClick={handleEnter} className="pixel-btn px-6 py-2">
                             ENTER ZUKURI
                         </button>
                     </motion.div>

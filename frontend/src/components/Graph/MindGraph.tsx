@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useBillingStore } from '../../stores/billingStore'
 import {
     forceSimulation,
     forceLink,
@@ -36,6 +37,8 @@ interface MindGraphProps {
     onClose: () => void
     nodes: MindNode[]
     edges: MindEdge[]
+    truncated?: boolean
+    totalCount?: number
 }
 
 interface SimNode extends SimulationNodeDatum, MindNode { }
@@ -92,11 +95,14 @@ export default function MindGraph({
     onClose,
     nodes,
     edges,
+    truncated = false,
+    totalCount = 0,
 }: MindGraphProps) {
     const svgRef = useRef<SVGSVGElement>(null)
     const containerRef = useRef<HTMLDivElement>(null)
     const [selectedNode, setSelectedNode] = useState<SimNode | null>(null)
     const [activeSources, setActiveSources] = useState<Set<string>>(loadFilters)
+    const { openUpsell } = useBillingStore()
 
     const toggleSource = (src: string) => {
         setActiveSources(prev => {
@@ -523,6 +529,28 @@ export default function MindGraph({
                                     </motion.div>
                                 )}
                             </AnimatePresence>
+
+                            {/* Free-tier truncation banner */}
+                            {truncated && (
+                                <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 py-2 border-t border-muse-border"
+                                    style={{ background: 'rgba(10, 8, 18, 0.92)' }}
+                                >
+                                    <span className="pixel-text text-[8px] text-muse-text-dim">
+                                        {totalCount - nodes.length} more nodes hidden — upgrade to see all {totalCount}
+                                    </span>
+                                    <button
+                                        onClick={openUpsell}
+                                        className="pixel-btn text-[8px] ml-4"
+                                        style={{
+                                            background: 'var(--color-pixel-pink)',
+                                            color: '#080808',
+                                            borderColor: 'var(--color-pixel-pink)',
+                                        }}
+                                    >
+                                        UNLOCK PRO
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </motion.div>
                 </motion.div>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy — Zukuri</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root { --bg:#F1EFE9;--surface:#fff;--border:#97B1A6;--text:#2e3a35;--dim:#6c8077;--sage-dk:#5e7a70; }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:14px;line-height:1.8}
+    nav{border-bottom:1px solid var(--border);padding:16px 24px;background:var(--bg)}
+    .logo{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--sage-dk)}
+    .content{max-width:720px;margin:60px auto;padding:0 24px 80px}
+    h1{font-family:'Press Start 2P',monospace;font-size:13px;margin-bottom:32px;line-height:1.8}
+    h2{font-family:'Press Start 2P',monospace;font-size:9px;margin:36px 0 14px;color:var(--sage-dk)}
+    p,li{color:var(--dim);margin-bottom:12px}
+    ul{padding-left:20px}
+    a{color:var(--sage-dk)}
+    .meta{font-size:12px;color:var(--dim);margin-bottom:40px}
+  </style>
+</head>
+<body>
+<nav><a href="/" class="logo">ZUKURI</a></nav>
+<div class="content">
+  <h1>Privacy Policy</h1>
+  <p class="meta">Last updated: June 2026</p>
+
+  <h2>1. What We Collect</h2>
+  <ul>
+    <li><strong>Account data:</strong> Email address and authentication credentials via Clerk</li>
+    <li><strong>Content:</strong> Messages, notes, references, plans, and habits you create</li>
+    <li><strong>Usage data:</strong> Message counts, feature interactions, session analytics (PostHog)</li>
+    <li><strong>Billing data:</strong> Subscription status managed by Stripe — we never see your card number</li>
+    <li><strong>Error data:</strong> Crash reports and performance traces via Sentry</li>
+  </ul>
+
+  <h2>2. How We Use It</h2>
+  <ul>
+    <li>To provide and improve the Service (AI responses, mind graph, skill tree)</li>
+    <li>To manage your subscription and enforce usage limits</li>
+    <li>To detect bugs and prevent abuse</li>
+    <li>To send essential transactional emails (billing receipts, account alerts)</li>
+  </ul>
+
+  <h2>3. AI Processing</h2>
+  <p>Your messages are sent to OpenAI's API to generate responses. OpenAI processes data per their <a href="https://openai.com/policies/privacy-policy" target="_blank">Privacy Policy</a>. We do not use your data to train AI models.</p>
+
+  <h2>4. Data Storage</h2>
+  <p>Data is stored in PostgreSQL on Railway (US region). Embeddings are stored using pgvector in the same database. Uploaded images are stored on Railway persistent storage.</p>
+
+  <h2>5. Third-Party Services</h2>
+  <ul>
+    <li><strong>Clerk</strong> — Authentication (<a href="https://clerk.com/privacy" target="_blank">Privacy Policy</a>)</li>
+    <li><strong>Stripe</strong> — Billing (<a href="https://stripe.com/privacy" target="_blank">Privacy Policy</a>)</li>
+    <li><strong>OpenAI</strong> — AI responses (<a href="https://openai.com/policies/privacy-policy" target="_blank">Privacy Policy</a>)</li>
+    <li><strong>PostHog</strong> — Analytics (<a href="https://posthog.com/privacy" target="_blank">Privacy Policy</a>)</li>
+    <li><strong>Sentry</strong> — Error tracking (<a href="https://sentry.io/privacy/" target="_blank">Privacy Policy</a>)</li>
+  </ul>
+
+  <h2>6. Your Rights</h2>
+  <ul>
+    <li><strong>Export:</strong> Download all your data via Settings → Export My Data</li>
+    <li><strong>Delete:</strong> Permanently delete your account and all data via Settings → Delete Account</li>
+    <li><strong>Correction:</strong> Contact us to correct inaccurate data</li>
+  </ul>
+
+  <h2>7. Data Retention</h2>
+  <p>We retain your data for as long as your account is active. When you delete your account, all data is permanently removed within 24 hours.</p>
+
+  <h2>8. Cookies</h2>
+  <p>We use localStorage for session persistence and analytics preferences. No third-party advertising cookies.</p>
+
+  <h2>9. Children</h2>
+  <p>The Service is not directed to children under 13. We do not knowingly collect data from children.</p>
+
+  <h2>10. Changes</h2>
+  <p>We will notify active users of material changes to this policy via email.</p>
+
+  <h2>11. Contact</h2>
+  <p>Privacy questions: <a href="mailto:privacy@zukuri.io">privacy@zukuri.io</a></p>
+</div>
+</body>
+</html>

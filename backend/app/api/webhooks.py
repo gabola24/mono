@@ -28,6 +28,7 @@ from app.db.database import (
     node_connections,
     projects,
     project_notes,
+    stripe_events,
 )
 
 router = APIRouter(tags=["webhooks"])
@@ -108,6 +109,96 @@ async def clerk_webhook(
             await _on_user_deleted(session, data)
 
     return {"received": True}
+
+
+@router.post("/webhooks/stripe")
+async def stripe_webhook(
+    request: Request,
+    stripe_signature: str | None = Header(default=None, alias="stripe-signature"),
+):
+    if not settings.stripe_webhook_secret:
+        raise HTTPException(400, "Stripe webhook not configured")
+
+    body = await request.body()
+
+    try:
+        import stripe as _stripe
+        event = _stripe.Webhook.construct_event(
+            payload=body,
+            sig_header=stripe_signature or "",
+            secret=settings.stripe_webhook_secret,
+        )
+    except Exception as exc:
+        raise HTTPException(400, f"Stripe signature error: {exc}")
+
+    event_id: str = event["id"]
+    event_type: str = event["type"]
+    data: dict = event.get("data", {}).get("object", {})
+
+    async with async_session() as session:
+        # Idempotency check
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+        result = await session.execute(
+            pg_insert(stripe_events)
+            .values(event_id=event_id)
+            .on_conflict_do_nothing()
+        )
+        if result.rowcount == 0:
+            return {"received": True, "duplicate": True}
+
+        if event_type == "checkout.session.completed":
+            await _on_checkout_completed(session, data)
+        elif event_type in ("customer.subscription.updated", "customer.subscription.deleted"):
+            await _on_subscription_changed(session, data, event_type)
+        elif event_type == "invoice.payment_failed":
+            await _on_payment_failed(session, data)
+
+        await session.commit()
+
+    return {"received": True}
+
+
+async def _on_checkout_completed(session, data: dict) -> None:
+    user_id: str | None = data.get("client_reference_id")
+    customer_id: str | None = data.get("customer")
+    if not user_id:
+        return
+    await session.execute(
+        sa.update(users)
+        .where(users.c.id == user_id)
+        .values(subscription_tier="pro", stripe_customer_id=customer_id)
+    )
+
+
+async def _on_subscription_changed(session, data: dict, event_type: str) -> None:
+    customer_id: str | None = data.get("customer")
+    if not customer_id:
+        return
+    status: str = data.get("status", "")
+    if event_type == "customer.subscription.deleted" or status in ("canceled", "unpaid"):
+        new_tier = "free"
+    elif status == "past_due":
+        new_tier = "pro_past_due"
+    elif status == "active":
+        new_tier = "pro"
+    else:
+        return
+    await session.execute(
+        sa.update(users)
+        .where(users.c.stripe_customer_id == customer_id)
+        .values(subscription_tier=new_tier)
+    )
+
+
+async def _on_payment_failed(session, data: dict) -> None:
+    customer_id: str | None = data.get("customer")
+    if not customer_id:
+        return
+    await session.execute(
+        sa.update(users)
+        .where(users.c.stripe_customer_id == customer_id)
+        .values(subscription_tier="pro_past_due")
+    )
 
 
 async def _on_user_created(session, data: dict) -> None:

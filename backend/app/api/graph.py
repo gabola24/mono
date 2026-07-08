@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
-from app.db.database import get_session, mind_nodes, node_connections, skill_nodes, skill_edges
+from app.db.database import get_session, mind_nodes, node_connections, skill_nodes, skill_edges, users
 from app.models.graph import (
     MindNodeCreate, MindNodeResponse,
     NodeConnectionCreate, NodeConnectionResponse,
@@ -17,30 +17,70 @@ from app.services.edge_reasoning import generate_edge_reason
 router = APIRouter(tags=["graph"])
 
 
+FREE_NODE_LIMIT = 10
+
+
 @router.get("/graph", response_model=GraphResponse)
 async def get_graph(
     session: AsyncSession = Depends(get_session),
     user_id: str = Depends(get_current_user),
 ):
-    nodes_result = await session.execute(
-        sa.select(
-            mind_nodes.c.id, mind_nodes.c.text, mind_nodes.c.category,
-            mind_nodes.c.color, mind_nodes.c.source, mind_nodes.c.created_at
-        ).where(mind_nodes.c.user_id == user_id)
+    # Determine tier
+    tier_row = await session.execute(
+        sa.select(users.c.subscription_tier).where(users.c.id == user_id)
     )
-    nodes_data = [dict(r._mapping) for r in nodes_result.fetchall()]
+    is_pro = (tier_row.scalar_one_or_none() or "free") == "pro"
 
-    edges_result = await session.execute(
-        sa.select(
-            node_connections.c.id, node_connections.c.source_id,
-            node_connections.c.target_id, node_connections.c.strength,
-            node_connections.c.reason, node_connections.c.kind,
-            node_connections.c.created_at
-        ).where(node_connections.c.user_id == user_id)
+    # Total node count for truncation hint
+    count_res = await session.execute(
+        sa.select(sa.func.count()).select_from(mind_nodes).where(mind_nodes.c.user_id == user_id)
     )
+    total_count = count_res.scalar() or 0
+
+    nodes_query = sa.select(
+        mind_nodes.c.id, mind_nodes.c.text, mind_nodes.c.category,
+        mind_nodes.c.color, mind_nodes.c.source, mind_nodes.c.created_at
+    ).where(mind_nodes.c.user_id == user_id).order_by(mind_nodes.c.created_at.desc())
+
+    if not is_pro:
+        nodes_query = nodes_query.limit(FREE_NODE_LIMIT)
+
+    nodes_result = await session.execute(nodes_query)
+    nodes_data = [dict(r._mapping) for r in nodes_result.fetchall()]
+    truncated = not is_pro and total_count > FREE_NODE_LIMIT
+
+    # Only return edges between visible nodes
+    if truncated:
+        visible_ids = [n["id"] for n in nodes_data]
+        edges_result = await session.execute(
+            sa.select(
+                node_connections.c.id, node_connections.c.source_id,
+                node_connections.c.target_id, node_connections.c.strength,
+                node_connections.c.reason, node_connections.c.kind,
+                node_connections.c.created_at,
+            ).where(
+                node_connections.c.user_id == user_id,
+                node_connections.c.source_id.in_(visible_ids),
+                node_connections.c.target_id.in_(visible_ids),
+            )
+        )
+    else:
+        edges_result = await session.execute(
+            sa.select(
+                node_connections.c.id, node_connections.c.source_id,
+                node_connections.c.target_id, node_connections.c.strength,
+                node_connections.c.reason, node_connections.c.kind,
+                node_connections.c.created_at,
+            ).where(node_connections.c.user_id == user_id)
+        )
     edges_data = [dict(r._mapping) for r in edges_result.fetchall()]
 
-    return GraphResponse(nodes=nodes_data, edges=edges_data)
+    return GraphResponse(
+        nodes=nodes_data,
+        edges=edges_data,
+        truncated=truncated,
+        total_count=total_count,
+    )
 
 
 @router.post("/graph/nodes", response_model=MindNodeResponse)

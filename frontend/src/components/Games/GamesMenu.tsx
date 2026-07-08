@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { GAMES, type GameDef } from './registry'
 
@@ -102,10 +102,16 @@ export default function GamesMenu({ isOpen, onClose, onAfterPlay }: Props) {
               exit={{ opacity: 0, x: 10 }}
               transition={{ duration: 0.15 }}
             >
-              <active.Component
-                onClose={() => setActive(null)}
-                onAfterPlay={onAfterPlay}
-              />
+              <Suspense fallback={
+                <div className="flex items-center justify-center h-40">
+                  <span className="pixel-text text-[9px] text-muse-text-dim animate-pulse">loading...</span>
+                </div>
+              }>
+                <active.Component
+                  onClose={() => setActive(null)}
+                  onAfterPlay={onAfterPlay}
+                />
+              </Suspense>
             </motion.div>
           )}
         </AnimatePresence>

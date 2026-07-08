@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import get_current_user
 from app.db.database import get_session
 from app.models.conversation import MessageRequest
+from app.usage import check_and_increment_messages
 from app.services.conversation import (
     get_or_create_conversation,
     stream_response,
@@ -24,6 +25,7 @@ async def chat(
     session: AsyncSession = Depends(get_session),
     user_id: str = Depends(get_current_user),
 ):
+    await check_and_increment_messages(session, user_id)
     conversation_id = await get_or_create_conversation(session, req.conversation_id, user_id)
 
     async def event_stream():

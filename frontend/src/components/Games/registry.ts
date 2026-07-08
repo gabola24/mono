@@ -1,9 +1,4 @@
-import type { ComponentType } from 'react'
-import LinkGame from '../LinkGame/LinkGame'
-import { AlienAttack } from './AlienAttack'
-import { KaleidoView } from './KaleidoView'
-import { BeatMaker } from './BeatMaker'
-import { Synth } from './Synth'
+import { lazy, type ComponentType } from 'react'
 
 export interface GameDef {
   id: string
@@ -12,6 +7,15 @@ export interface GameDef {
   glyph: string[]  // 3-line ASCII icon
   Component: ComponentType<{ onClose: () => void; onAfterPlay?: () => void }>
 }
+
+type GP = { onClose: () => void; onAfterPlay?: () => void }
+
+const LinkGame = lazy(() => import('../LinkGame/LinkGame'))
+const AlienAttack = lazy(() => import('./AlienAttack').then(m => ({ default: m.AlienAttack })))
+const KaleidoView = lazy(() => import('./KaleidoView').then(m => ({ default: m.KaleidoView })))
+const BeatMaker = lazy(() => import('./BeatMaker').then(m => ({ default: m.BeatMaker })))
+const Synth = lazy(() => import('./Synth').then(m => ({ default: m.Synth })))
+const Stargaze = lazy(() => import('./Stargaze').then(m => ({ default: m.Stargaze })))
 
 export const GAMES: GameDef[] = [
   {
@@ -23,7 +27,7 @@ export const GAMES: GameDef[] = [
       '  |  ',
       ' ◆—◆ ',
     ],
-    Component: LinkGame,
+    Component: LinkGame as ComponentType<GP>,
   },
   {
     id: 'alien-attack',
@@ -34,7 +38,7 @@ export const GAMES: GameDef[] = [
       '|   |',
       ' \\=/ ',
     ],
-    Component: AlienAttack as ComponentType<{ onClose: () => void; onAfterPlay?: () => void }>,
+    Component: AlienAttack as ComponentType<GP>,
   },
   {
     id: 'kaleido',
@@ -45,7 +49,7 @@ export const GAMES: GameDef[] = [
       '·  ✸  ·',
       '❋ · ✦ · ❋',
     ],
-    Component: KaleidoView as ComponentType<{ onClose: () => void; onAfterPlay?: () => void }>,
+    Component: KaleidoView as ComponentType<GP>,
   },
   {
     id: 'beat-maker',
@@ -56,7 +60,7 @@ export const GAMES: GameDef[] = [
       '··█···█·',
       '·█·█·█·█',
     ],
-    Component: BeatMaker as ComponentType<{ onClose: () => void; onAfterPlay?: () => void }>,
+    Component: BeatMaker as ComponentType<GP>,
   },
   {
     id: 'synth',
@@ -67,6 +71,17 @@ export const GAMES: GameDef[] = [
       '[●●●●●]',
       ' ▓▓▓▓▓ ',
     ],
-    Component: Synth as ComponentType<{ onClose: () => void; onAfterPlay?: () => void }>,
+    Component: Synth as ComponentType<GP>,
+  },
+  {
+    id: 'stargaze',
+    name: 'STARGAZE',
+    tagline: 'Draw lines between stars. Name what calls.',
+    glyph: [
+      '✦ · ❋',
+      ' ╲ ╱ ',
+      '  ✺  ',
+    ],
+    Component: Stargaze as ComponentType<GP>,
   },
 ]

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { apiFetch } from '../../lib/api'
 
 interface StreakInfo {
   current_streak: number
@@ -10,7 +11,7 @@ export default function StreakCounter() {
   const [streak, setStreak] = useState<StreakInfo | null>(null)
 
   useEffect(() => {
-    fetch('/api/activity/checkin', { method: 'POST' })
+    apiFetch('/api/activity/checkin', { method: 'POST' })
       .then((r) => r.json())
       .then(setStreak)
       .catch(() => {})

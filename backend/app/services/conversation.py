@@ -1,7 +1,6 @@
 from __future__ import annotations
 import asyncio
 import uuid
-from datetime import datetime, timezone
 from collections.abc import AsyncGenerator
 
 import sqlalchemy as sa
@@ -54,7 +53,6 @@ async def save_message(session: AsyncSession, conversation_id: str, role: str, c
             conversation_id=conversation_id,
             role=role,
             content=content,
-            created_at=datetime.now(timezone.utc),
         )
     )
     await session.commit()

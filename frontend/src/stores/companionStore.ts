@@ -10,7 +10,9 @@ interface CompanionState {
   xp: number
   level: number
   lastActiveDate: string
+  name: string
   setMood: (mood: CompanionMood) => void
+  setName: (name: string) => void
   addXp: (amount: number) => void
   loseXp: (amount: number) => void
   checkDailyDecay: () => void
@@ -40,7 +42,9 @@ export const useCompanionStore = create<CompanionState>()(
       xp: 0,
       level: 1,
       lastActiveDate: '',
+      name: 'Mono',
       setMood: (mood) => set({ mood }),
+      setName: (name) => set({ name }),
       addXp: (amount) =>
         set((state) => {
           const newXp = state.xp + amount
@@ -91,6 +95,7 @@ export const useCompanionStore = create<CompanionState>()(
         level: state.level,
         stage: state.stage,
         lastActiveDate: state.lastActiveDate,
+        name: state.name,
       }),
     }
   )

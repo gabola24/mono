@@ -26,6 +26,8 @@ class NodeConnectionResponse(NodeConnectionCreate):
 class GraphResponse(BaseModel):
     nodes: list[MindNodeResponse]
     edges: list[NodeConnectionResponse]
+    truncated: bool = False
+    total_count: int = 0
 
 class LinkGameRound(BaseModel):
     conceptA: str

@@ -22,6 +22,18 @@ class Settings(BaseSettings):
     # Clerk auth — leave empty to run in single-tenant dev mode (SYSTEM_USER_ID)
     clerk_jwks_url: str = ""
     clerk_webhook_secret: str = ""  # whsec_... from Clerk dashboard
+    clerk_secret_key: str = ""  # sk_... used only for account deletion
+
+    # Stripe billing — leave empty to disable billing
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""  # whsec_... from Stripe dashboard
+    stripe_price_id: str = ""  # price_... for Pro monthly subscription
+
+    # Frontend URL for Stripe redirect after checkout
+    app_url: str = "http://localhost:5173"
+
+    # Sentry error tracking — leave empty to disable
+    sentry_dsn: str = ""
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

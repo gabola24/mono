@@ -1,8 +1,17 @@
+import { track } from './analytics'
+
 type TokenGetter = () => Promise<string | null>
+type Handle402 = () => void
+
 let _tokenGetter: TokenGetter | null = null
+let _on402: Handle402 | null = null
 
 export function registerTokenGetter(fn: TokenGetter): void {
   _tokenGetter = fn
+}
+
+export function register402Handler(fn: Handle402): void {
+  _on402 = fn
 }
 
 /**
@@ -25,5 +34,10 @@ export async function apiFetch(path: string, options?: RequestInit): Promise<Res
   if (token) {
     headers.set('Authorization', `Bearer ${token}`)
   }
-  return fetch(`${base}${path}`, { ...options, headers })
+  const response = await fetch(`${base}${path}`, { ...options, headers })
+  if (response.status === 402) {
+    track('paywall_hit', { path })
+    if (_on402) _on402()
+  }
+  return response
 }

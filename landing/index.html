@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zukuri — Your Creative Companion</title>
+  <meta name="description" content="Chat with an AI companion that remembers, grows, and maps your creative mind. Free to start." />
+  <meta property="og:title" content="Zukuri — Your Creative Companion" />
+  <meta property="og:description" content="Chat with an AI companion that remembers, grows, and maps your creative mind." />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── Design tokens matching the app ──────────────────────────── */
+    :root {
+      --bg:         #F1EFE9;
+      --surface:    #ffffff;
+      --border:     #97B1A6;
+      --text:       #2e3a35;
+      --dim:        #6c8077;
+      --coral:      #F5BEB0;
+      --coral-dk:   #c9856d;
+      --sage:       #97B1A6;
+      --sage-dk:    #5e7a70;
+      --peach:      #F4DBD6;
+      --mint:       #D4E4D4;
+      --sand:       #D0C5B9;
+      --amber:      #4a5c54;
+      --font-px:    'Press Start 2P', monospace;
+      --font-mono:  'JetBrains Mono', 'Courier New', monospace;
+    }
+
+    /* ── Reset ────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      line-height: 1.75;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Shared typography ───────────────────────────────────────── */
+    .px  { font-family: var(--font-px); }
+    .dim { color: var(--dim); }
+
+    /* ── Buttons ─────────────────────────────────────────────────── */
+    .btn {
+      display: inline-block;
+      font-family: var(--font-px);
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      padding: 12px 24px;
+      border: 2px solid var(--sage-dk);
+      color: var(--sage-dk);
+      background: transparent;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .btn:hover { background: var(--sage-dk); color: var(--bg); }
+
+    .btn-primary {
+      background: var(--coral);
+      border-color: var(--coral-dk);
+      color: var(--text);
+    }
+    .btn-primary:hover { background: var(--coral-dk); color: #fff; }
+
+    .btn-lg {
+      font-size: 11px;
+      padding: 16px 36px;
+    }
+
+    /* ── Layout helpers ──────────────────────────────────────────── */
+    .container {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    section { padding: 80px 0; }
+
+    /* ── Nav ─────────────────────────────────────────────────────── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo {
+      font-family: var(--font-px);
+      font-size: 11px;
+      color: var(--sage-dk);
+      letter-spacing: 0.15em;
+    }
+    .nav-logo span {
+      color: var(--coral-dk);
+    }
+
+    /* ── Hero ────────────────────────────────────────────────────── */
+    .hero {
+      padding: 80px 0 60px;
+      border-bottom: 1px solid var(--border);
+    }
+    .hero-inner {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+    }
+    .hero-text {}
+    .hero-tag {
+      font-family: var(--font-px);
+      font-size: 8px;
+      color: var(--sage-dk);
+      letter-spacing: 0.15em;
+      margin-bottom: 20px;
+    }
+    .hero-headline {
+      font-family: var(--font-px);
+      font-size: clamp(14px, 2.4vw, 22px);
+      line-height: 1.8;
+      color: var(--text);
+      margin-bottom: 20px;
+    }
+    .hero-headline em {
+      font-style: normal;
+      color: var(--coral-dk);
+    }
+    .hero-sub {
+      color: var(--dim);
+      font-size: 14px;
+      margin-bottom: 32px;
+      max-width: 420px;
+      line-height: 1.8;
+    }
+    .hero-ctas {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .hero-note {
+      font-size: 11px;
+      color: var(--dim);
+      margin-top: 14px;
+    }
+
+    /* ── Demo panel ──────────────────────────────────────────────── */
+    .demo-panel {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      overflow: hidden;
+    }
+    .demo-titlebar {
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .demo-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--sand);
+    }
+    .demo-title {
+      font-family: var(--font-px);
+      font-size: 7px;
+      color: var(--dim);
+      margin-left: 4px;
+    }
+    .demo-body {
+      padding: 20px;
+    }
+
+    /* companion */
+    .companion-wrap {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+    #companion-ascii {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.4;
+      color: var(--text);
+      text-align: center;
+      white-space: pre;
+      min-height: 80px;
+      display: flex;
+      align-items: center;
+    }
+
+    /* chat */
+    .chat-log {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: 12px;
+    }
+    .bubble {
+      max-width: 85%;
+      padding: 10px 14px;
+      line-height: 1.6;
+      border: 1px solid var(--border);
+    }
+    .bubble-user {
+      align-self: flex-end;
+      background: var(--peach);
+      border-color: var(--coral);
+      color: var(--text);
+    }
+    .bubble-ai {
+      align-self: flex-start;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .bubble-ai .speaker {
+      font-family: var(--font-px);
+      font-size: 7px;
+      color: var(--sage-dk);
+      display: block;
+      margin-bottom: 4px;
+    }
+    .cursor {
+      display: inline-block;
+      width: 8px;
+      height: 13px;
+      background: var(--amber);
+      vertical-align: middle;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* ── Features ────────────────────────────────────────────────── */
+    .features { background: var(--surface); }
+    .section-label {
+      font-family: var(--font-px);
+      font-size: 8px;
+      color: var(--dim);
+      letter-spacing: 0.2em;
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 32px;
+    }
+    .feature-card {
+      border: 1px solid var(--border);
+      padding: 32px 28px;
+      background: var(--bg);
+    }
+    .feature-icon {
+      font-size: 28px;
+      margin-bottom: 20px;
+      display: block;
+      font-style: normal;
+    }
+    .feature-title {
+      font-family: var(--font-px);
+      font-size: 10px;
+      color: var(--text);
+      margin-bottom: 14px;
+      line-height: 1.8;
+    }
+    .feature-desc {
+      color: var(--dim);
+      font-size: 13px;
+      line-height: 1.8;
+    }
+
+    /* ── Pricing ─────────────────────────────────────────────────── */
+    .pricing { background: var(--bg); }
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+    .plan {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      padding: 36px 32px;
+      position: relative;
+    }
+    .plan-pro {
+      border-color: var(--coral-dk);
+      border-width: 2px;
+    }
+    .plan-badge {
+      position: absolute;
+      top: -1px;
+      right: 24px;
+      background: var(--coral-dk);
+      color: #fff;
+      font-family: var(--font-px);
+      font-size: 7px;
+      padding: 5px 10px;
+    }
+    .plan-name {
+      font-family: var(--font-px);
+      font-size: 11px;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .plan-price {
+      font-family: var(--font-px);
+      font-size: 18px;
+      color: var(--sage-dk);
+      margin-bottom: 6px;
+    }
+    .plan-price span {
+      font-size: 10px;
+      color: var(--dim);
+    }
+    .plan-billing {
+      font-size: 11px;
+      color: var(--dim);
+      margin-bottom: 28px;
+    }
+    .plan-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+    .plan-features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 32px;
+    }
+    .plan-features li {
+      font-size: 12px;
+      color: var(--dim);
+      display: flex;
+      gap: 10px;
+    }
+    .plan-features li::before {
+      content: '◈';
+      color: var(--sage-dk);
+      flex-shrink: 0;
+    }
+    .plan-features li.highlight {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    /* ── Footer ──────────────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 0;
+      background: var(--surface);
+    }
+    .footer-inner {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .footer-logo {
+      font-family: var(--font-px);
+      font-size: 9px;
+      color: var(--sage-dk);
+    }
+    .footer-links {
+      display: flex;
+      gap: 28px;
+      flex-wrap: wrap;
+    }
+    .footer-links a {
+      font-size: 12px;
+      color: var(--dim);
+      transition: color 0.15s;
+    }
+    .footer-links a:hover { color: var(--text); }
+
+    /* ── Responsive ──────────────────────────────────────────────── */
+    @media (max-width: 720px) {
+      .hero-inner       { grid-template-columns: 1fr; gap: 40px; }
+      .features-grid    { grid-template-columns: 1fr; }
+      .pricing-grid     { grid-template-columns: 1fr; }
+      .hero-headline    { font-size: 13px; }
+      section           { padding: 60px 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Nav ───────────────────────────────────────────────────────── -->
+<nav>
+  <div class="nav-inner">
+    <span class="nav-logo"><span>ZUKURI</span></span>
+    <a href="https://app.zukuri.io" class="btn">Open App →</a>
+  </div>
+</nav>
+
+<!-- ── Hero ──────────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-text">
+      <p class="hero-tag">// creative companion //</p>
+      <h1 class="hero-headline px">
+        THE NOTE APP<br>THAT TALKS BACK.
+      </h1>
+      <p class="hero-sub">
+        Write a thought. Your companion grows with it — mapping connections, tracking skills, and remembering what matters to you.
+      </p>
+      <div class="hero-ctas">
+        <a href="https://app.zukuri.io" class="btn btn-primary btn-lg">Start free →</a>
+        <a href="#pricing" class="btn">See pricing</a>
+      </div>
+      <p class="hero-note">Free forever · No credit card · Upgrade anytime</p>
+    </div>
+
+    <div class="demo-panel">
+      <div class="demo-titlebar">
+        <div class="demo-dot"></div>
+        <div class="demo-dot"></div>
+        <div class="demo-dot"></div>
+        <span class="demo-title">MONO — your companion</span>
+      </div>
+      <div class="demo-body">
+        <div class="companion-wrap">
+          <pre id="companion-ascii"></pre>
+        </div>
+        <div class="chat-log" id="chat-log">
+          <!-- populated by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Features ──────────────────────────────────────────────────── -->
+<section class="features">
+  <div class="container">
+    <p class="section-label">// WHAT ZUKURI DOES //</p>
+    <div class="features-grid">
+
+      <div class="feature-card">
+        <i class="feature-icon">💬</i>
+        <h3 class="feature-title px">TALKS BACK</h3>
+        <p class="feature-desc">
+          Not a chatbot — a companion. It knows your projects, your skills, your patterns. Every message makes it sharper.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <i class="feature-icon">🌱</i>
+        <h3 class="feature-title px">WATCHES YOU GROW</h3>
+        <p class="feature-desc">
+          Your companion evolves as you use it — 5 stages, skill tree, daily stats. Consistent use builds a richer mind.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <i class="feature-icon">🕸️</i>
+        <h3 class="feature-title px">MAPS YOUR MIND</h3>
+        <p class="feature-desc">
+          Every thought becomes a node. Connections form automatically. Your mind graph shows patterns you couldn't see before.
+        </p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── Pricing ────────────────────────────────────────────────────── -->
+<section class="pricing" id="pricing">
+  <div class="container">
+    <p class="section-label">// PRICING //</p>
+    <div class="pricing-grid">
+
+      <div class="plan">
+        <p class="plan-name px">FREE</p>
+        <p class="plan-price px">$0 <span>/ month</span></p>
+        <p class="plan-billing">Always free · no card needed</p>
+        <hr class="plan-divider" />
+        <ul class="plan-features">
+          <li>20 messages / day</li>
+          <li>Companion stages 1–2</li>
+          <li>Mind graph glance (10 nodes)</li>
+          <li>Core chat</li>
+        </ul>
+        <a href="https://app.zukuri.io" class="btn" style="width:100%;text-align:center;display:block;">
+          Get started →
+        </a>
+      </div>
+
+      <div class="plan plan-pro">
+        <span class="plan-badge">RECOMMENDED</span>
+        <p class="plan-name px">PRO</p>
+        <p class="plan-price px">$5 <span>/ month</span></p>
+        <p class="plan-billing">or $39 / year · cancel anytime</p>
+        <hr class="plan-divider" />
+        <ul class="plan-features">
+          <li class="highlight">500 messages / day</li>
+          <li class="highlight">All companion stages</li>
+          <li class="highlight">Full mind graph — unlimited</li>
+          <li class="highlight">Arcade games</li>
+          <li class="highlight">Workspace — plans &amp; habits</li>
+          <li class="highlight">Garage — project tracker</li>
+          <li class="highlight">References upload</li>
+        </ul>
+        <a href="https://app.zukuri.io" class="btn btn-primary" style="width:100%;text-align:center;display:block;">
+          Start Pro →
+        </a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ─────────────────────────────────────────────────────── -->
+<footer>
+  <div class="footer-inner">
+    <span class="footer-logo">ZUKURI</span>
+    <nav class="footer-links">
+      <a href="/terms">Terms of Service</a>
+      <a href="/privacy">Privacy Policy</a>
+      <a href="mailto:hello@zukuri.io">Contact</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+  // ── Config ────────────────────────────────────────────────────────
+  const APP_URL = 'https://app.zukuri.io'
+
+  // ── ASCII companion frames ────────────────────────────────────────
+  const FRAMES = [
+    // idle
+    `  .------.\n ( o    o )\n  \\  __  /\n  '------'\n    ||||`,
+    // blink
+    `  .------.\n ( -    - )\n  \\  __  /\n  '------'\n    ||||`,
+    // idle
+    `  .------.\n ( o    o )\n  \\  __  /\n  '------'\n    ||||`,
+    // happy
+    `  .------.\n ( ^    ^ )\n  \\  oo  /\n  '------'\n    ||||`,
+    // think
+    `  .------.\n ( o    . )\n  \\  __  /\n  '------'\n    ||||  ?`,
+    // idle
+    `  .------.\n ( o    o )\n  \\  __  /\n  '------'\n    ||||`,
+  ]
+
+  let frameIdx = 0
+  const companionEl = document.getElementById('companion-ascii')
+
+  function renderFrame() {
+    companionEl.textContent = FRAMES[frameIdx]
+    frameIdx = (frameIdx + 1) % FRAMES.length
+  }
+  renderFrame()
+  setInterval(renderFrame, 900)
+
+  // ── Animated chat demo ────────────────────────────────────────────
+  const MESSAGES = [
+    { role: 'user',  text: "I keep starting projects and never finishing them." },
+    { role: 'ai',   text: "I notice that pattern. Let's build around it — what's pulling at you right now?" },
+    { role: 'user',  text: "Maybe a tool for writers. Something simple." },
+    { role: 'ai',   text: "Added to your mind graph. Two connections formed with existing nodes." },
+    { role: 'user',  text: "Wait, it connects to my reading list?" },
+    { role: 'ai',   text: "Your notes on annotation tools from last week. You were already circling this." },
+  ]
+
+  const chatLog = document.getElementById('chat-log')
+  let msgIdx = 0
+  let charIdx = 0
+  let currentBubble = null
+  let currentSpan = null
+
+  function addBubble(msg) {
+    const bubble = document.createElement('div')
+    bubble.className = `bubble bubble-${msg.role}`
+    if (msg.role === 'ai') {
+      const speaker = document.createElement('span')
+      speaker.className = 'speaker'
+      speaker.textContent = 'MONO'
+      bubble.appendChild(speaker)
+    }
+    const span = document.createElement('span')
+    bubble.appendChild(span)
+    chatLog.appendChild(bubble)
+    chatLog.scrollTop = chatLog.scrollHeight
+    return span
+  }
+
+  function typeNext() {
+    if (msgIdx >= MESSAGES.length) {
+      // pause then restart
+      setTimeout(() => {
+        chatLog.innerHTML = ''
+        msgIdx = 0
+        charIdx = 0
+        currentBubble = null
+        currentSpan = null
+        setTimeout(typeNext, 600)
+      }, 4000)
+      return
+    }
+
+    const msg = MESSAGES[msgIdx]
+
+    if (!currentSpan) {
+      currentSpan = addBubble(msg)
+      charIdx = 0
+    }
+
+    if (charIdx < msg.text.length) {
+      currentSpan.textContent += msg.text[charIdx]
+      charIdx++
+      chatLog.scrollTop = chatLog.scrollHeight
+      setTimeout(typeNext, 28 + Math.random() * 20)
+    } else {
+      currentSpan = null
+      msgIdx++
+      setTimeout(typeNext, msg.role === 'ai' ? 900 : 500)
+    }
+  }
+
+  setTimeout(typeNext, 1000)
+
+  // ── Update CTA links ──────────────────────────────────────────────
+  document.querySelectorAll('a[href="https://app.zukuri.io"]').forEach(el => {
+    el.href = APP_URL
+  })
+</script>
+
+</body>
+</html>

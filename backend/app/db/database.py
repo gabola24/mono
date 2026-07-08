@@ -1,19 +1,24 @@
 from __future__ import annotations
-from sqlalchemy import event
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from pgvector.sqlalchemy import Vector
 
+from urllib.parse import urlparse, urlencode, urlunparse, parse_qs
 from app.config import settings
 
-engine = create_async_engine(settings.database_url, echo=False)
-async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+# Strip psql-specific params asyncpg doesn't understand; enable SSL via connect_args
+def _asyncpg_engine_args(url: str):
+    _STRIP = {'sslmode', 'channel_binding', 'sslcert', 'sslkey', 'sslrootcert', 'application_name'}
+    parsed = urlparse(url)
+    params = parse_qs(parsed.query, keep_blank_values=True)
+    needs_ssl = params.get('sslmode', ['disable'])[0] not in ('disable', '')
+    clean = {k: v[0] for k, v in params.items() if k not in _STRIP}
+    clean_url = urlunparse(parsed._replace(query=urlencode(clean)))
+    return clean_url, ({'ssl': True} if needs_ssl else {})
 
-# Register pgvector codec for asyncpg connections
-@event.listens_for(engine.sync_engine, "connect")
-def _register_vector(dbapi_conn, _):
-    from pgvector.asyncpg import register_vector
-    dbapi_conn.run_sync(register_vector)
+_db_url, _connect_args = _asyncpg_engine_args(settings.database_url)
+engine = create_async_engine(_db_url, echo=False, connect_args=_connect_args)
+async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 metadata = sa.MetaData()
 
@@ -219,6 +224,28 @@ project_notes = sa.Table(
     sa.Column("content", sa.Text, nullable=False),
     sa.Column("note_type", sa.String, default="thought"),
     sa.Column("created_at", sa.DateTime, server_default=sa.func.now()),
+)
+
+
+# ─── Usage tracking ─────────────────────────────────────────────────────────
+
+usage_log = sa.Table(
+    "usage_log",
+    metadata,
+    sa.Column("user_id", sa.String, sa.ForeignKey("users.id"), nullable=False),
+    sa.Column("date", sa.Date, nullable=False),
+    sa.Column("message_count", sa.Integer, nullable=False, server_default="0"),
+    sa.Column("image_count", sa.Integer, nullable=False, server_default="0"),
+    sa.PrimaryKeyConstraint("user_id", "date"),
+)
+
+# ─── Stripe event dedup ─────────────────────────────────────────────────────
+
+stripe_events = sa.Table(
+    "stripe_events",
+    metadata,
+    sa.Column("event_id", sa.String, primary_key=True),
+    sa.Column("processed_at", sa.DateTime, server_default=sa.func.now()),
 )
 
 

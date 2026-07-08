@@ -3,6 +3,7 @@ import { useChatStore } from '../stores/chatStore'
 import { useCompanionStore } from '../stores/companionStore'
 import { useSkillTree } from './useSkillTree'
 import { apiFetch } from '../lib/api'
+import { track } from '../lib/analytics'
 
 export function useChat(onAfterMessage?: () => void) {
   const {
@@ -22,6 +23,8 @@ export function useChat(onAfterMessage?: () => void) {
   const sendMessage = useCallback(
     async (content: string) => {
       if (!content.trim() || isStreaming) return
+
+      const isFirstMessage = messages.length === 0
 
       const userMsg = {
         id: crypto.randomUUID(),
@@ -103,6 +106,7 @@ export function useChat(onAfterMessage?: () => void) {
         fetchTree()
         fetchSummary()
         onAfterMessage?.()
+        if (isFirstMessage) track('first_message')
 
       } catch (err) {
         console.error('Chat error:', err)
@@ -112,7 +116,7 @@ export function useChat(onAfterMessage?: () => void) {
         setMood('idle')
       }
     },
-    [conversationId, isStreaming, addMessage, appendToLast, updateLast, setStreaming, setConversationId, setMood, addXp, fetchTree, fetchSummary, onAfterMessage]
+    [conversationId, isStreaming, messages, addMessage, appendToLast, updateLast, setStreaming, setConversationId, setMood, addXp, fetchTree, fetchSummary, onAfterMessage]
   )
 
   return { messages, isStreaming, sendMessage }

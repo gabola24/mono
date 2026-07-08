@@ -11,9 +11,11 @@
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.61.8",
+    "@sentry/react": "^8.55.0",
     "d3-force": "^3.0.0",
     "d3-selection": "^3.0.0",
     "framer-motion": "^12.38.0",
+    "posthog-js": "^1.247.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "zustand": "^5.0.12"

@@ -54,8 +54,9 @@ def upgrade() -> None:
         )
 
     # 4. Backfill existing rows (empty DB in practice, but correct for safety)
+    # Double-quote table names to handle reserved words like "references"
     for table in TABLES:
-        op.execute(f"UPDATE {table} SET user_id = '{SYSTEM_USER_ID}'")
+        op.execute(f'UPDATE "{table}" SET user_id = \'{SYSTEM_USER_ID}\'')
 
     # 5. Make user_id NOT NULL now that every row has a value
     for table in TABLES:

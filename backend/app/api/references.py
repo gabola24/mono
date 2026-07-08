@@ -7,11 +7,22 @@ import sqlalchemy as sa
 from fastapi import APIRouter, Depends, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import sqlalchemy as sa
 from app.auth import get_current_user
-from app.db.database import get_session, references
+from app.db.database import get_session, references, users
 from app.models.reference import TextReferenceRequest, ReferenceResponse, ReferenceStats
 from app.services.embeddings import embed_text, describe_image
 from app.services.skill_discovery import process_skill_discovery
+
+
+async def _require_pro(session: AsyncSession, user_id: str) -> None:
+    row = await session.execute(
+        sa.select(users.c.subscription_tier).where(users.c.id == user_id)
+    )
+    tier = row.scalar_one_or_none() or "free"
+    if tier not in ("pro",):
+        from fastapi import HTTPException
+        raise HTTPException(402, "References upload requires Pro. Upgrade to continue.")
 
 router = APIRouter(tags=["references"])
 
@@ -41,6 +52,7 @@ async def add_text_reference(
     session: AsyncSession = Depends(get_session),
     user_id: str = Depends(get_current_user),
 ):
+    await _require_pro(session, user_id)
     ref_id = str(uuid.uuid4())
     title = req.title or req.content[:60].strip()
     now = datetime.now(timezone.utc)
@@ -73,6 +85,7 @@ async def add_image_reference(
     session: AsyncSession = Depends(get_session),
     user_id: str = Depends(get_current_user),
 ):
+    await _require_pro(session, user_id)
     if file.content_type not in ALLOWED_IMAGE_TYPES:
         from fastapi import HTTPException
         raise HTTPException(400, f"Unsupported image type: {file.content_type}")

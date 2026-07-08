@@ -50,18 +50,15 @@ export default function ChatInterface({ onAfterMessage }: ChatInterfaceProps) {
             transition={{ delay: 0.5 }}
             className="flex items-center justify-center h-full"
           >
-            <div className="text-center">
+            <div className="text-center px-4">
               <p
-                className="font-mono text-sm mb-3"
-                style={{
-                  color: 'var(--color-crt-amber)',
-                  textShadow: '0 0 8px var(--color-crt-glow)',
-                }}
+                className="font-mono text-base mb-3"
+                style={{ color: 'var(--color-muse-text-dim)' }}
               >
-                &gt; awaiting input_
+                Tell me what's on your mind...
               </p>
-              <p className="text-muse-text-dim text-xs font-display italic">
-                "The unexamined idea is not worth building."
+              <p className="text-muse-text-dim text-xs font-display italic opacity-50">
+                thoughts, plans, questions — anything
               </p>
             </div>
           </motion.div>
